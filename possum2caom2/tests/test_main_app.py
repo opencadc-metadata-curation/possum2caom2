@@ -67,62 +67,60 @@
 # ***********************************************************************
 #
 
-"""
-Implements the default entry point functions for the workflow 
-application.
+from mock import patch
 
-'run' executes based on either provided lists of work, or files on disk.
-'run_incremental' executes incrementally, usually based on time-boxed intervals.
-"""
+from possum2caom2 import fits2caom2_augmentation, main_app
+from caom2.diff import get_differences
+from caom2pipe import astro_composable as ac
+from caom2pipe import manage_composable as mc
+from caom2pipe import reader_composable as rdc
 
-import logging
-import sys
-import traceback
+import glob
+import os
 
-from caom2pipe.run_composable import run_by_state, run_todo
-from blank2caom2 import fits2caom2_augmentation
-
-
-BLANK_BOOKMARK = 'blank_timestmap'
-META_VISITORS = [fits2caom2_augmentation]
-DATA_VISITORS = []
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
+PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
 
 
-def _run():
-    """
-    Uses a todo file to identify the work to be done.
-
-    :return 0 if successful, -1 if there's any sort of failure. Return status
-        is used by airflow for task instance management and reporting.
-    """
-    return run_by_todo( meta_visitors=META_VISITORS, data_visitors=DATA_VISITORS)
+def pytest_generate_tests(metafunc):
+    obs_id_list = glob.glob(f'{TEST_DATA_DIR}/*.fits.header')
+    metafunc.parametrize('test_name', obs_id_list)
 
 
-def run():
-    """Wraps _run in exception handling, with sys.exit calls."""
+@patch('caom2utils.data_util.get_local_headers_from_fits')
+def test_main_app(header_mock, test_name):
+    header_mock.side_effect = ac.make_headers_from_file
+    storage_name = main_app.PossumName(entry=test_name)
+    metadata_reader = rdc.FileMetadataReader()
+    metadata_reader.set(storage_name)
+    file_type = 'application/fits'
+    metadata_reader.file_info[storage_name.file_uri].file_type = file_type
+    kwargs = {
+        'storage_name': storage_name,
+        'metadata_reader': metadata_reader,
+    }
+    expected_fqn = f'{TEST_DATA_DIR}/{test_name}.expected.xml'
+    expected = mc.read_obs_from_file(expected_fqn)
+    in_fqn = expected_fqn.replace('.expected', '.in')
+    actual_fqn = expected_fqn.replace('expected', 'actual')
+    if os.path.exists(actual_fqn):
+        os.unlink(actual_fqn)
+    observation = None
+    if os.path.exists(in_fqn):
+        observation = mc.read_obs_from_file(in_fqn)
+    observation = fits2caom2_augmentation.visit(observation, **kwargs)
     try:
-        result = _run()
-        sys.exit(result)
+        compare_result = get_differences(expected, observation)
     except Exception as e:
-        logging.error(e)
-        tb = traceback.format_exc()
-        logging.debug(tb)
-        sys.exit(-1)
-
-
-def _run_incremental():
-    """Uses a state file with a timestamp to identify the work to be done.
-    """
-    return run_by_state( bookmark_name=BLANK_BOOKMARK, meta_visitors=META_VISITORS, data_visitors=DATA_VISITORS)
-
-
-def run_incremental():
-    """Wraps _run_incremental in exception handling."""
-    try:
-        _run_incremental()
-        sys.exit(0)
-    except Exception as e:
-        logging.error(e)
-        tb = traceback.format_exc()
-        logging.debug(tb)
-        sys.exit(-1)
+        mc.write_obs_to_file(observation, actual_fqn)
+        raise e
+    if compare_result is not None:
+        mc.write_obs_to_file(observation, actual_fqn)
+        compare_text = '\n'.join([r for r in compare_result])
+        msg = (
+            f'Differences found in observation {expected.observation_id}\n'
+            f'{compare_text}'
+        )
+        raise AssertionError(msg)
+    # assert False  # cause I want to see logging messages

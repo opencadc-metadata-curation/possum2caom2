@@ -67,25 +67,24 @@
 # ***********************************************************************
 #
 
-from caom2pipe import manage_composable as mc
-from blank2caom2 import BlankName
+from possum2caom2 import PossumName
 
 
 def test_is_valid():
-    assert BlankName('anything').is_valid()
+    assert PossumName('anything').is_valid()
     
 
 def test_storage_name(test_config):
     test_obs_id = 'TEST_OBS_ID'
     test_f_name = f'{test_obs_id}.fits'
-    test_uri = f'cadc:{COLLECTION}/{test_f_name}'
+    test_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name}'
     for entry in [
         test_f_name,
         test_uri,
         f'https://localhost:8020/{test_f_name}',
         f'vos:goliaths/test/{test_f_name}',
     ]:
-        test_subject = BlankName(entry)
+        test_subject = PossumName(entry)
         assert test_subject.obs_id == test_obs_id, 'wrong obs id'
         assert test_subject.product_id == test_obs_id, 'wrong product id'
         assert test_subject.source_names == [entry], 'wrong source names'

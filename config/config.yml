@@ -8,9 +8,11 @@ proxy_file_name: /usr/src/app/cadcproxy.pem
 # operational value is ivo://cadc.nrc.ca/ams
 # - modifies entries on sc2.canfar.net
 resource_id: ivo://cadc.nrc.ca/sc2repo
-# operational value is ivo://cadc.nrc.ca/ams/blank
+# operational value is ivo://cadc.nrc.ca/ams/possum
 # - queries entries on sc2.canfar.net
 tap_id: ivo://cadc.nrc.ca/sc2tap
+storage_inventory_resource_id: ivo://cadc.nrc.ca/uvic/minoc
+storage_inventory_tap_resource_id: ivo://cadc.nrc.ca/global/luskan
 # file that contains the list of entries to process
 todo_file_name: todo.txt
 data_sources:
@@ -48,7 +50,9 @@ retry_file_name: retries.txt
 # this file is created in the logs directory, default is 'progress.txt'
 progress_file_name: progress.txt
 #
-collection: BLANK
+collection: POSSUM
+scheme: cadc
+preview_scheme: cadc
 #
 # CADC service execution metrics
 #

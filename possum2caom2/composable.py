@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2021.                            (c) 2021.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -61,26 +62,67 @@
 #  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
 #                                       <http://www.gnu.org/licenses/>.
 #
-#  : 4 $
+#  $Revision: 4 $
 #
 # ***********************************************************************
 #
 
+"""
+Implements the default entry point functions for the workflow 
+application.
 
-from caom2pipe import caom_composable as cc
-from blank2caom2 import main_app
+'run' executes based on either provided lists of work, or files on disk.
+'run_incremental' executes incrementally, usually based on time-boxed intervals.
+"""
+
+import logging
+import sys
+import traceback
+
+from caom2pipe.run_composable import run_by_state, run_by_todo
+from possum2caom2 import fits2caom2_augmentation
 
 
-__all__ = ['BlankFits2caom2Visitor']
+POSSUM_BOOKMARK = 'possum_timestmap'
+META_VISITORS = [fits2caom2_augmentation]
+DATA_VISITORS = []
 
 
-class BlankFits2caom2Visitor(cc.Fits2caom2Visitor):
-    def __init__(self, observation, **kwargs):
-        super().__init__(observation, **kwargs)
+def _run():
+    """
+    Uses a todo file to identify the work to be done.
 
-    def _get_mapping(self, headers):
-        return main_app.BlankMapping(self._storage_name, headers)
+    :return 0 if successful, -1 if there's any sort of failure. Return status
+        is used by airflow for task instance management and reporting.
+    """
+    return run_by_todo( meta_visitors=META_VISITORS, data_visitors=DATA_VISITORS)
 
 
-def visit(observation, **kwargs):
-    return BlankFits2caom2Visitor(observation, **kwargs).visit()
+def run():
+    """Wraps _run in exception handling, with sys.exit calls."""
+    try:
+        result = _run()
+        sys.exit(result)
+    except Exception as e:
+        logging.error(e)
+        tb = traceback.format_exc()
+        logging.debug(tb)
+        sys.exit(-1)
+
+
+def _run_incremental():
+    """Uses a state file with a timestamp to identify the work to be done.
+    """
+    return run_by_state( bookmark_name=POSSUM_BOOKMARK, meta_visitors=META_VISITORS, data_visitors=DATA_VISITORS)
+
+
+def run_incremental():
+    """Wraps _run_incremental in exception handling."""
+    try:
+        _run_incremental()
+        sys.exit(0)
+    except Exception as e:
+        logging.error(e)
+        tb = traceback.format_exc()
+        logging.debug(tb)
+        sys.exit(-1)

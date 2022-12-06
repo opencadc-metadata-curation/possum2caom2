@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2020.                            (c) 2020.
+#  (c) 2022.                            (c) 2022.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -67,57 +67,23 @@
 # ***********************************************************************
 #
 
-import os
-import test_main_app
+from caom2pipe.manage_composable import Config, StorageName
+import pytest
 
-from mock import Mock, patch
-from tempfile import TemporaryDirectory
-
-from caom2pipe import manage_composable as mc
-from blank2caom2 import composable
+COLLECTION = 'POSSUM'
+SCHEME = 'cadc'
+PREVIEW_SCHEME = 'cadc'
 
 
-def test_run_by_state():
-    pass
+@pytest.fixture()
+def test_config():
+    config = Config()
+    config.collection = COLLECTION
+    config.preview_scheme = PREVIEW_SCHEME
+    config.scheme = SCHEME
+    config.logging_level = 'INFO'
+    StorageName.collection = config.collection
+    StorageName.preview_scheme = config.preview_scheme
+    StorageName.scheme = config.scheme
+    return config
 
-
-@patch('cadcutils.net.ws.WsCapabilities.get_access_url')
-@patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
-def test_run(run_mock, access_mock):
-    run_mock.return_value = 0
-    access_mock.return_value = 'https://localhost'
-    test_f_id = 'test_file_id'
-    test_f_name = f'{test_f_id}.fits'
-    getcwd_orig = os.getcwd
-    os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
-    config = mc.Config()
-    config.get_executors()
-    with TemporaryDirectory(dir=test_main_app.TEST_DATA_DIR) as temp_dir:
-        os.chdir(temp_dir)
-        config.working_directory = temp_dir
-        config.log_file_directory = f'{temp_dir}/logs'
-        config.rejected_directory = f'{temp_dir}/rejected'
-        mc.Config.write_to_file(config)
-
-        with open(f'{temp_dir}/test_proxy.pem', 'w') as f:
-            f.write('test content')
-        with open(f'{temp_dir}/todo.txt', 'w') as f:
-            f.write(test_f_name)
-
-        try:
-            # execution
-            test_result = composable._run()
-            assert test_result == 0, 'wrong return value'
-            assert run_mock.called, 'should have been called'
-            args, kwargs = run_mock.call_args
-            test_storage = args[0]
-            assert isinstance(
-                test_storage, mc.StorageName
-            ), type(test_storage)
-            assert test_storage.file_name == test_f_name, 'wrong file name'
-            assert (
-                test_storage.source_names[0] == test_f_name
-            ), 'wrong fname on disk'
-        finally:
-            os.getcwd = getcwd_orig
-            os.chdir(test_main_app.TEST_DATA_DIR)

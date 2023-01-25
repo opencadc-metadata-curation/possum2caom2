@@ -67,8 +67,12 @@
 # ***********************************************************************
 #
 
+from os.path import dirname, join, realpath
 from caom2pipe.manage_composable import Config, StorageName
 import pytest
+
+THIS_DIR = dirname(realpath(__file__))
+TEST_DATA_DIR = join(THIS_DIR, 'data')
 
 COLLECTION = 'POSSUM'
 SCHEME = 'cadc'

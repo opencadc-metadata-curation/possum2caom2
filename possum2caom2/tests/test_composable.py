@@ -84,7 +84,7 @@ def test_run_by_state():
 def test_run(run_mock, access_mock, test_config, tmp_path):
     run_mock.return_value = 0
     access_mock.return_value = 'https://localhost'
-    test_f_id = 'test_file_id'
+    test_f_id = 'PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_snrPIfit'
     test_f_name = f'{test_f_id}.fits'
     orig_cwd = os.getcwd()
     try:

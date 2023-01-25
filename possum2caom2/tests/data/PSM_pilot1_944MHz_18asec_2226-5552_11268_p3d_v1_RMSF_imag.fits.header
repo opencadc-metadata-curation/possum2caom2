@@ -1,0 +1,128 @@
+# HDU 0 in PSM_pilot1_18asec_944MHz_2226-5552_11268_p3d_v1_RMSF_imag.fits:
+SIMPLE  =                    T / conforms to FITS standard                      
+BITPIX  =                  -32 / array data type                                
+NAXIS   =                    4 / number of array dimensions                     
+NAXIS1  =                 2048                                                  
+NAXIS2  =                 2048                                                  
+NAXIS3  =                  803                                                  
+NAXIS4  =                    1                                                  
+BMAJ    =   4.500000000000E-03                                                  
+BMIN    =   4.027777777778E-03                                                  
+BPA     =   7.487000000000E+01                                                  
+BTYPE   = 'Intensity'                                                           
+OBJECT  = '        '                                                            
+BUNIT   = 'Jy/beam '           /Brightness (pixel) unit                         
+EQUINOX =   2.000000000000E+03                                                  
+RADESYS = 'FK5     '                                                            
+LONPOLE =   0.000000000000E+00                                                  
+LATPOLE =   9.000000000000E+01                                                  
+PC1_1   =   7.071067811865E-01                                                  
+PC2_1   =  -7.071067811865E-01                                                  
+PC3_1   =   0.000000000000E+00                                                  
+PC4_1   =   0.000000000000E+00                                                  
+PC1_2   =   7.071067811865E-01                                                  
+PC2_2   =   7.071067811865E-01                                                  
+PC3_2   =   0.000000000000E+00                                                  
+PC4_2   =   0.000000000000E+00                                                  
+PC1_3   =   0.000000000000E+00                                                  
+PC2_3   =   0.000000000000E+00                                                  
+PC3_3   =   1.000000000000E+00                                                  
+PC4_3   =   0.000000000000E+00                                                  
+PC1_4   =   0.000000000000E+00                                                  
+PC2_4   =   0.000000000000E+00                                                  
+PC3_4   =   0.000000000000E+00                                                  
+PC4_4   =   1.000000000000E+00                                                  
+CTYPE1  = 'RA---HPX'                                                            
+CRVAL1  =   0.000000000000E+00                                                  
+CDELT1  =  -9.710633743374E-04                                                  
+CRPIX1  =  -6.553400101999E+04                                                  
+CUNIT1  = 'deg     '                                                            
+CTYPE2  = 'DEC--HPX'                                                            
+CRVAL2  =   0.000000000000E+00                                                  
+CDELT2  =   9.710633743374E-04                                                  
+CRPIX2  =   1.843400030762E+04                                                  
+CUNIT2  = 'deg     '                                                            
+CTYPE3  = 'FDEP    '           / Faraday depth (linear)                         
+CRVAL3  =              -1203.0 / [rad/m^2] Coordinate value at reference point  
+CDELT3  =                  3.0 / [rad/m^2] Coordinate increment at reference poi
+CRPIX3  =                  201                                                  
+CUNIT3  = 'rad/m^2 '                                                            
+CTYPE4  = 'STOKES  '                                                            
+CRVAL4  =   2.000000000000E+00                                                  
+CDELT4  =   1.000000000000E+00                                                  
+CRPIX4  =   1.000000000000E+00                                                  
+CUNIT4  = '        '                                                            
+PV2_1   =   4.000000000000E+00                                                  
+PV2_2   =   3.000000000000E+00                                                  
+RESTFRQ =   1.420405751786E+09 /Rest Frequency (Hz)                             
+SPECSYS = 'TOPOCENT'           /Spectral reference frame                        
+ALTRVAL =   1.309454998387E+08                                                  
+ALTRPIX =   1.000000000000E+00                                                  
+VELREF  =                  259 /1 LSR, 2 HEL, 3 OBS, +256 Radio                 
+COMMENT casacore non-standard usage: 4 LSD, 5 GEO, 6 SOU, 7 GAL                 
+TELESCOP= 'ASKAP   '                                                            
+DATE-OBS= '2019-10-03T08:21:36.500000'                                          
+TIMESYS = 'UTC     '                                                            
+OBSGEO-X=  -2.558266717765E+06                                                  
+OBSGEO-Y=   5.095672176508E+06                                                  
+OBSGEO-Z=  -2.849020838078E+06                                                  
+PROJECT = 'AS103   '                                                            
+SBID    = '10083   '                                                            
+DURATION= '36011   '                                                            
+ALTRVAL_=   1.106836303470E+08                                                  
+ALTRPIX_=   1.000000000000E+00                                                  
+PROJECT_= 'AS103   '                                                            
+SBID_1  = '10083   '                                                            
+SBID_2  = '10083   '                                                            
+DATE    = '2022-10-26T20:04:48.337320' /Date FITS file was written              
+ORIGIN  = 'CASA 6.5.1-23 CASAtools:v1.0.0'                                      
+LAMSQ0  =    0.103371842824327 / Lambda^2_0, in m^2                             
+DATAMAX =    60.03564071655273                                                  
+DATAMIN =    58.03564071655273                                                  
+HISTORY Produced with ASKAPsoft version 1.0.16                                  
+HISTORY Processed with ASKAP pipeline version 1.0.16                            
+HISTORY Processed with ACES software revision 49174                             
+HISTORY Processed with ASKAP pipelines on 2020-12-24T06:59:41                   
+HISTORY Processed with CASA version 5.6.1-8.el7                                 
+HISTORY 2022-10-24T17:13:02 INFO SRCCODE='::imregrid'                           
+HISTORY version: 6.5.1-23 CASAtools:v1.0.0                                      
+HISTORY 2022-10-24T17:13:02 INFO SRCCODE='::imregrid'                           
+HISTORY imregrid(imagename="EMU/image.restored.q.SB10083.contcube.conv.top.fits"
+HISTORY >, template=..., output="EMU/tiles/CUBE/2154-55/PoSSUM.q.top-2154-55-112
+HISTORY >.image", asvelocity=True, axes=[0, 1], shape=[2048 2048    1   96], ine
+HISTORY >polation="cubic", decimate=10, replicate=False, overwrite=False)       
+HISTORY Produced with ASKAPsoft version 1.0.16                                  
+HISTORY Processed with ASKAP pipeline version 1.0.16                            
+HISTORY Processed with ACES software revision 49174                             
+HISTORY Processed with ASKAP pipelines on 2020-12-24T06:59:41                   
+HISTORY Processed with CASA version 5.6.1-8.el7                                 
+HISTORY 2022-10-25T16:31:18 INFO SRCCODE='::imregrid'                           
+HISTORY version: 6.5.1-23 CASAtools:v1.0.0                                      
+HISTORY 2022-10-25T16:31:18 INFO SRCCODE='::imregrid'                           
+HISTORY imregrid(imagename="EMU/image.restored.q.SB10083.contcube.conv.mid.fits"
+HISTORY >, template=..., output="EMU/tiles/CUBE/2154-55/PoSSUM.q.mid-2154-55-112
+HISTORY >.image", asvelocity=True, axes=[0, 1], shape=[2048 2048    1   96], ine
+HISTORY >polation="cubic", decimate=10, replicate=False, overwrite=False)       
+HISTORY Produced with ASKAPsoft version 1.0.16                                  
+HISTORY Processed with ASKAP pipeline version 1.0.16                            
+HISTORY Processed with ACES software revision 49174                             
+HISTORY Processed with ASKAP pipelines on 2020-12-24T06:59:41                   
+HISTORY Processed with CASA version 5.6.1-8.el7                                 
+HISTORY 2022-10-25T19:58:50 INFO SRCCODE='::imregrid'                           
+HISTORY version: 6.5.1-23 CASAtools:v1.0.0                                      
+HISTORY 2022-10-25T19:58:50 INFO SRCCODE='::imregrid'                           
+HISTORY imregrid(imagename="EMU/image.restored.q.SB10083.contcube.conv.bot.fits"
+HISTORY >, template=..., output="EMU/tiles/CUBE/EMUtile-2154-55/PoSSUM.q.bot-EMU
+HISTORY >le-2154-55-11268.image", asvelocity=True, axes=[0, 1], shape=[2048 204 
+HISTORY >    1   96], interpolation="cubic", decimate=10, replicate=False, overw
+HISTORY >te=False)                                                              
+HISTORY CASA START LOGTABLE                                                     
+HISTORY 2022-10-26T20:03:34 INFO SRCCODE='::image::_concat'                     
+HISTORY Ran ia.imageconcat on /gpfs/fs0/scratch/b/bmg/lerato/EMU/tiles/CUBE/2154
+HISTORY >-55/bigimage2.image                                                    
+HISTORY 2022-10-26T20:03:34 INFO SRCCODE='::image::_concat'                     
+HISTORY ia.imageconcat(outfile='bigimage2.image', infiles='PoSSUM.q.top-2154-55-
+HISTORY >11268.fits PoSSUM.q.mid-2154-55-11268.fits PoSSUM.q.bot-2154-55-11268.f
+HISTORY >ts', axis=-1, relax=false, tempclose=true, overwrite=true, reorder=fals
+HISTORY >, mode='paged')                                                        
+HISTORY CASA END LOGTABLE                                                       

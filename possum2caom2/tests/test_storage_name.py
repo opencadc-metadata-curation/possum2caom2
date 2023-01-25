@@ -67,17 +67,24 @@
 # ***********************************************************************
 #
 
+from glob import glob
+from os.path import basename
+
 from possum2caom2 import PossumName
 
 
-def test_is_valid():
-    assert PossumName('anything').is_valid()
+import conftest
+
+
+def pytest_generate_tests(metafunc):
+    obs_id_list = glob(f'{conftest.TEST_DATA_DIR}/*.fits.header')
+    metafunc.parametrize('test_name', obs_id_list)
     
 
-def test_storage_name(test_config):
-    test_obs_id = 'TEST_OBS_ID'
-    test_f_name = f'{test_obs_id}.fits'
-    test_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name}'
+def test_storage_name(test_config, test_name):
+    test_obs_id = '944MHz_18asec_2226-5552_11268'
+    test_f_name = basename(test_name)
+    test_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name.replace(".header", "")}'
     for entry in [
         test_f_name,
         test_uri,
@@ -85,8 +92,9 @@ def test_storage_name(test_config):
         f'vos:goliaths/test/{test_f_name}',
     ]:
         test_subject = PossumName(entry)
-        assert test_subject.obs_id == test_obs_id, 'wrong obs id'
-        assert test_subject.product_id == test_obs_id, 'wrong product id'
-        assert test_subject.source_names == [entry], 'wrong source names'
+        assert test_subject.obs_id == test_obs_id, f'wrong obs id {test_f_name}'
+        assert test_subject.source_names == [entry], f'wrong source names {test_f_name}'
         assert test_subject.destination_uris == [test_uri], f'wrong uris {test_subject}'
-
+        assert (
+            test_subject.product_id == test_f_name.split(test_obs_id)[-1].replace('.fits.header', '').lstrip('_')
+        ), f'wrong product id {test_subject.product_id}'

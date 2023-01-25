@@ -79,11 +79,16 @@ import logging
 import sys
 import traceback
 
+from caom2pipe.client_composable import ClientCollection
+from caom2pipe.manage_composable import Config
+from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.run_composable import run_by_state, run_by_todo
-from possum2caom2 import fits2caom2_augmentation
+from caom2pipe.transfer_composable import VoScienceTransfer
+from possum2caom2 import fits2caom2_augmentation, main_app
+from vos import Client
 
 
-POSSUM_BOOKMARK = 'possum_timestmap'
+POSSUM_BOOKMARK = 'possum_timestamp'
 META_VISITORS = [fits2caom2_augmentation]
 DATA_VISITORS = []
 
@@ -95,7 +100,23 @@ def _run():
     :return 0 if successful, -1 if there's any sort of failure. Return status
         is used by airflow for task instance management and reporting.
     """
-    return run_by_todo( meta_visitors=META_VISITORS, data_visitors=DATA_VISITORS)
+    config = Config()
+    config.get_executors()
+    source_transfer = None
+    vo_client = Client(vospace_certfile=config.proxy_fqn)
+    clients = ClientCollection(config)
+    clients.vo_client = vo_client
+    if config.use_vos:
+        source_transfer = VoScienceTransfer(vo_client)
+    name_builder = EntryBuilder(main_app.PossumName)
+    return run_by_todo(
+        config=config,
+        name_builder=name_builder,
+        meta_visitors=META_VISITORS,
+        data_visitors=DATA_VISITORS,
+        store_transfer=source_transfer,
+        clients=clients,
+    )
 
 
 def run():

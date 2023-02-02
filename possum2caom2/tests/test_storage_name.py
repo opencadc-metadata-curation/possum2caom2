@@ -95,6 +95,7 @@ def test_storage_name(test_config, test_name):
         assert test_subject.obs_id == test_obs_id, f'wrong obs id {test_f_name}'
         assert test_subject.source_names == [entry], f'wrong source names {test_f_name}'
         assert test_subject.destination_uris == [test_uri], f'wrong uris {test_subject}'
-        assert (
-            test_subject.product_id == test_f_name.split(test_obs_id)[-1].replace('.fits.header', '').lstrip('_')
-        ), f'wrong product id {test_subject.product_id}'
+        if 'pilot' in entry:
+            assert test_subject.product_id == '3d_pipeline', f'wrong product id {test_subject.product_id}'
+        else:
+            assert test_subject.product_id == test_f_name.split(test_obs_id)[-1].replace('.fits.header', '').lstrip('_')

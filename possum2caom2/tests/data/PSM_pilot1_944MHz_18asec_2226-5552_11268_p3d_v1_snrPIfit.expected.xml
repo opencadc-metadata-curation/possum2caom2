@@ -15,7 +15,7 @@
   </caom2:telescope>
   <caom2:planes>
     <caom2:plane caom2:id="72537fe2-c049-4d39-908a-f08e87a8a2f2" caom2:metaProducer="possum2caom2/0.1.0">
-      <caom2:productID>p3d_v1_snrPIfit</caom2:productID>
+      <caom2:productID>3d_pipeline</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:dataRelease>2025-01-01T00:00:00.000</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>

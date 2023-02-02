@@ -72,12 +72,15 @@ This module implements the ObsBlueprint mapping, as well as the workflow
 entry point that executes the workflow.
 """
 
+import logging
+import traceback
+
 from math import sqrt
 from os.path import basename
 
 from caom2 import CalibrationLevel, DataProductType, ProductType, ReleaseType
 from caom2pipe import caom_composable as cc
-from caom2pipe.manage_composable import make_time, StorageName
+from caom2pipe.manage_composable import CadcException, make_time, StorageName, ValueRepairCache
 
 
 __all__ = ['PossumName', 'APPLICATION', 'mapping_factory']
@@ -155,9 +158,31 @@ class PossumName(StorageName):
 
     def set_product_id(self):
         self._product_id = self._file_id.split(self._obs_id)[-1].lstrip('_')
+        if '_p3d_' in self._file_id:
+            self._product_id = '3d_pipeline'
+        elif '_p1d_' in self._file_id:
+            self._product_id = '1d_pipeline'
+
+
+class PossumValueRepair(ValueRepairCache):
+
+    VALUE_REPAIR = {
+        'chunk.custom.axis.axis.cunit': {
+            'rad / m2': 'rad/m**2',
+        }
+    }
+
+    def __init__(self):
+        self._value_repair = PossumValueRepair.VALUE_REPAIR
+        self._key = None
+        self._values = None
+        self._logger = logging.getLogger(self.__class__.__name__)
 
 
 class Possum1DMapping(cc.TelescopeMapping):
+
+    value_repair = PossumValueRepair()
+
     def __init__(self, storage_name, headers, clients):
         super().__init__(storage_name, headers, clients)
 
@@ -175,9 +200,27 @@ class Possum1DMapping(cc.TelescopeMapping):
         bp.set('Artifact.releaseType', ReleaseType.DATA)
         self._logger.debug('Done accumulate_bp.')
 
+    def update(self, observation, file_info):
+        """Called to fill multiple CAOM model elements and/or attributes
+        (an n:n relationship between TDM attributes and CAOM attributes).
+        """
+        self._logger.debug(f'Begin update for {observation.observation_id}.')
+        try:
+            super().update(observation, file_info)
+            Possum1DMapping.value_repair.repair(observation)
+            self._logger.debug('Done update.')
+            return observation
+        except CadcException as e:
+            tb = traceback.format_exc()
+            self._logger.debug(tb)
+            self._logger.error(e)
+            self._logger.error(
+                f'Terminating ingestion for {observation.observation_id}'
+            )
+            return None
+
     def _get_data_product_type(self, ext):
         naxis = self._headers[ext].get('NAXIS')
-        self._logger.error(naxis)
         result = DataProductType.CUBE
         if naxis == 0:
             result = DataProductType.MEASUREMENTS

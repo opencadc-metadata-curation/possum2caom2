@@ -76,20 +76,19 @@ from caom2pipe import manage_composable as mc
 from caom2pipe import reader_composable as rdc
 
 import glob
+import logging
 import os
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
-PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
+import conftest
 
 
 def pytest_generate_tests(metafunc):
-    obs_id_list = glob.glob(f'{TEST_DATA_DIR}/*.fits.header')
+    obs_id_list = glob.glob(f'{conftest.TEST_DATA_DIR}/*.fits.header')
     metafunc.parametrize('test_name', obs_id_list)
 
 
 @patch('caom2utils.data_util.get_local_headers_from_fits')
-def test_main_app(header_mock, test_name):
+def test_main_app(header_mock, test_config, test_name):
     header_mock.side_effect = ac.make_headers_from_file
     storage_name = main_app.PossumName(entry=test_name)
     metadata_reader = rdc.FileMetadataReader()
@@ -100,7 +99,7 @@ def test_main_app(header_mock, test_name):
         'storage_name': storage_name,
         'metadata_reader': metadata_reader,
     }
-    expected_fqn = f'{TEST_DATA_DIR}/{test_name}.expected.xml'
+    expected_fqn = f'{test_name.replace(".fits.header", "")}.expected.xml'
     expected = mc.read_obs_from_file(expected_fqn)
     in_fqn = expected_fqn.replace('.expected', '.in')
     actual_fqn = expected_fqn.replace('expected', 'actual')

@@ -80,7 +80,7 @@ class PossumFits2caom2Visitor(cc.Fits2caom2Visitor):
         super().__init__(observation, **kwargs)
 
     def _get_mapping(self, headers):
-        return mapping_factory(self._storage_name, headers, self._clients)
+        return mapping_factory(self._storage_name, headers, self._clients, self._observable, self._observation)
 
     def _get_parser(self, headers, blueprint, uri):
         if self._storage_name.is_1d_output:

@@ -80,13 +80,10 @@ from os.path import basename
 
 from caom2 import CalibrationLevel, DataProductType, ProductType, ReleaseType
 from caom2pipe import caom_composable as cc
-from caom2pipe.manage_composable import CadcException, make_time, StorageName, ValueRepairCache
+from caom2pipe.manage_composable import CadcException, make_datetime, StorageName, ValueRepairCache
 
 
-__all__ = ['PossumName', 'APPLICATION', 'mapping_factory']
-
-
-APPLICATION = 'possum2caom2'
+__all__ = ['PossumName', 'mapping_factory']
 
 
 class PossumName(StorageName):
@@ -183,14 +180,14 @@ class Possum1DMapping(cc.TelescopeMapping):
 
     value_repair = PossumValueRepair()
 
-    def __init__(self, storage_name, headers, clients):
-        super().__init__(storage_name, headers, clients)
+    def __init__(self, storage_name, headers, clients, observable, observation):
+        super().__init__(storage_name, headers, clients, observable, observation)
 
-    def accumulate_blueprint(self, bp, application=None):
+    def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model
         Observation level."""
         self._logger.debug('Begin accumulate_bp.')
-        super().accumulate_blueprint(bp, APPLICATION)
+        super().accumulate_blueprint(bp)
         bp.set('Observation.metaRelease', '2025-01-01T00:00:00.000')
         bp.set('Plane.calibrationLevel', CalibrationLevel.CALIBRATED)
         bp.set('Plane.dataProductType', '_get_data_product_type()')
@@ -200,22 +197,22 @@ class Possum1DMapping(cc.TelescopeMapping):
         bp.set('Artifact.releaseType', ReleaseType.DATA)
         self._logger.debug('Done accumulate_bp.')
 
-    def update(self, observation, file_info):
+    def update(self, file_info):
         """Called to fill multiple CAOM model elements and/or attributes
         (an n:n relationship between TDM attributes and CAOM attributes).
         """
-        self._logger.debug(f'Begin update for {observation.observation_id}.')
+        self._logger.debug(f'Begin update for {self._observation.observation_id}.')
         try:
-            super().update(observation, file_info)
-            Possum1DMapping.value_repair.repair(observation)
+            super().update(file_info)
+            Possum1DMapping.value_repair.repair(self._observation)
             self._logger.debug('Done update.')
-            return observation
+            return self._observation
         except CadcException as e:
             tb = traceback.format_exc()
             self._logger.debug(tb)
             self._logger.error(e)
             self._logger.error(
-                f'Terminating ingestion for {observation.observation_id}'
+                f'Terminating ingestion for {self._observation.observation_id}'
             )
             return None
 
@@ -230,14 +227,14 @@ class Possum1DMapping(cc.TelescopeMapping):
 
 
 class PossumInputMapping(Possum1DMapping):
-    def __init__(self, storage_name, headers, clients):
-        super().__init__(storage_name, headers, clients)
+    def __init__(self, storage_name, headers, clients, observable, observation):
+        super().__init__(storage_name, headers, clients, observable, observation)
 
-    def accumulate_blueprint(self, bp, application=None):
+    def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model
         Observation level."""
         self._logger.debug('Begin accumulate_bp.')
-        super().accumulate_blueprint(bp, APPLICATION)
+        super().accumulate_blueprint(bp)
         bp.configure_position_axes((1, 2))
         bp.configure_time_axis(3)
         bp.configure_energy_axis(4)
@@ -248,14 +245,14 @@ class PossumInputMapping(Possum1DMapping):
 
 
 class PossumOutputMapping(Possum1DMapping):
-    def __init__(self, storage_name, headers, clients):
-        super().__init__(storage_name, headers, clients)
+    def __init__(self, storage_name, headers, clients, observable, observation):
+        super().__init__(storage_name, headers, clients, observable, observation)
 
-    def accumulate_blueprint(self, bp, application=None):
+    def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model
         Observation level."""
         self._logger.debug('Begin accumulate_bp.')
-        super().accumulate_blueprint(bp, APPLICATION)
+        super().accumulate_blueprint(bp)
 
         bp.configure_position_axes((1, 2))
         bp.configure_polarization_axis(3)
@@ -282,12 +279,12 @@ class PossumOutputMapping(Possum1DMapping):
 
         self._logger.debug('Done accumulate_bp.')
 
-    def update(self, observation, file_info):
+    def update(self, file_info):
         """Called to fill multiple CAOM model elements and/or attributes
         (an n:n relationship between TDM attributes and CAOM attributes).
         """
-        super().update(observation, file_info)
-        for plane in observation.planes.values():
+        super().update(file_info)
+        for plane in self._observation.planes.values():
             for artifact in plane.artifacts.values():
                 if artifact.uri != self._storage_name.file_uri:
                     continue
@@ -301,10 +298,12 @@ class PossumOutputMapping(Possum1DMapping):
                                 and chunk.time.axis.function.ref_coord is not None
                             ):
                                 # because the CD matrix is present, but not correctly for TIME (index 5)
-                                chunk.time.axis.function.ref_coord.val = make_time(self._headers[0].get('DATE-OBS')).timestamp()
+                                chunk.time.axis.function.ref_coord.val = make_datetime(
+                                    self._headers[0].get('DATE-OBS')
+                                ).timestamp()
                         if chunk.energy is not None:
                             chunk.energy_axis = None
-        return observation
+        return self._observation
 
     def _get_position_resolution(self, ext):
         bmaj = self._headers[ext]['BMAJ']
@@ -318,11 +317,11 @@ class PossumOutputMapping(Possum1DMapping):
         return result
 
 
-def mapping_factory(storage_name, headers, clients):
+def mapping_factory(storage_name, headers, clients, observable, observation):
     if storage_name.is_1d_output:
-        result = Possum1DMapping(storage_name, headers, clients)
+        result = Possum1DMapping(storage_name, headers, clients, observable, observation)
     elif storage_name.is_output:
-        result = PossumOutputMapping(storage_name, headers, clients)
+        result = PossumOutputMapping(storage_name, headers, clients, observable, observation)
     else:
-        result = PossumInputMapping(storage_name, headers, clients)
+        result = PossumInputMapping(storage_name, headers, clients, observable, observation)
     return result

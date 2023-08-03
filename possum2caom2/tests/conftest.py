@@ -71,8 +71,6 @@ from os.path import dirname, join, realpath
 from caom2pipe.manage_composable import Config, StorageName
 import pytest
 
-THIS_DIR = dirname(realpath(__file__))
-TEST_DATA_DIR = join(THIS_DIR, 'data')
 
 COLLECTION = 'POSSUM'
 SCHEME = 'cadc'
@@ -86,8 +84,18 @@ def test_config():
     config.preview_scheme = PREVIEW_SCHEME
     config.scheme = SCHEME
     config.logging_level = 'INFO'
+    config.meta_read_groups = [
+        'ivo://cadc.nrc.ca/gms?CADC', 'ivo://cadc.nrc.ca/gms?POSSUM-RW', 'ivo://cadc.nrc.ca/gms?POSSUM_Members'
+    ]
+    config.data_read_groups = config.meta_read_groups
     StorageName.collection = config.collection
     StorageName.preview_scheme = config.preview_scheme
     StorageName.scheme = config.scheme
     return config
 
+
+@pytest.fixture()
+def test_data_dir():
+    this_dir = dirname(realpath(__file__))
+    fqn = join(this_dir, 'data')
+    return fqn

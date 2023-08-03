@@ -78,9 +78,13 @@ import traceback
 from math import sqrt
 from os.path import basename
 
+from astropy.io import fits
+
 from caom2 import CalibrationLevel, DataProductType, ProductType, ReleaseType
+from caom2utils import FitsWcsParser
 from caom2pipe import caom_composable as cc
-from caom2pipe.manage_composable import CadcException, make_datetime, StorageName, ValueRepairCache
+from caom2pipe.astro_composable import get_datetime_mjd
+from caom2pipe.manage_composable import CadcException, make_datetime, StorageName, to_float, ValueRepairCache
 
 
 __all__ = ['PossumName', 'mapping_factory']
@@ -154,11 +158,17 @@ class PossumName(StorageName):
             self._obs_id = f'{bits[1]}_{bits[2]}_{bits[3]}_{bits[4]}'
 
     def set_product_id(self):
-        self._product_id = self._file_id.split(self._obs_id)[-1].lstrip('_')
+        bits = self._file_id.split('_')
         if '_p3d_' in self._file_id:
             self._product_id = '3d_pipeline'
         elif '_p1d_' in self._file_id:
             self._product_id = '1d_pipeline'
+        elif bits[5] == 'i':
+            self._product_id = 'raw_i'
+        elif bits[5] == 'q' or bits[5] == 'u':
+            self._product_id = 'raw_qu'
+        else:
+            raise CadcException(f'Unexcepted file naming pattern {self._file_id}')
 
 
 class PossumValueRepair(ValueRepairCache):
@@ -180,8 +190,8 @@ class Possum1DMapping(cc.TelescopeMapping):
 
     value_repair = PossumValueRepair()
 
-    def __init__(self, storage_name, headers, clients, observable, observation):
-        super().__init__(storage_name, headers, clients, observable, observation)
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
 
     def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model
@@ -189,6 +199,7 @@ class Possum1DMapping(cc.TelescopeMapping):
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
         bp.set('Observation.metaRelease', '2025-01-01T00:00:00.000')
+        bp.add_attribute('Observation.proposal.id', 'PROJECT')
         bp.set('Plane.calibrationLevel', CalibrationLevel.CALIBRATED)
         bp.set('Plane.dataProductType', '_get_data_product_type()')
         bp.set('Plane.metaRelease', '2025-01-01T00:00:00.000')
@@ -225,28 +236,105 @@ class Possum1DMapping(cc.TelescopeMapping):
             result = DataProductType.IMAGE
         return result
 
+    def _get_position_resolution(self, ext):
+        bmaj = self._headers[ext].get('BMAJ')
+        bmin = self._headers[ext].get('BMIN')
+        # From
+        # https://open-confluence.nrao.edu/pages/viewpage.action?pageId=13697486
+        # Clare Chandler via JJK - 21-08-18
+        result = None
+        if bmaj is not None and bmaj != 'INF' and bmin is not None and bmin != 'INF':
+            result = 3600.0 * sqrt(bmaj * bmin)
+        return result
+
+    @staticmethod
+    def _from_pc_to_cd(from_header, to_header):
+            cd1_1 = from_header.get('CD1_1')
+            # caom2IngestSitelle.py, l745
+            # CW
+            # Be able to handle any of the 3 wcs systems used
+            if cd1_1 is None:
+                pc1_1 = from_header.get('PC1_1')
+                if pc1_1 is not None:
+                    cdelt1 = to_float(from_header.get('CDELT1'))
+                    if cdelt1 is None:
+                        cd1_1 = to_float(from_header.get('PC1_1'))
+                        cd1_2 = to_float(from_header.get('PC1_2'))
+                        cd2_1 = to_float(from_header.get('PC2_1'))
+                        cd2_2 = to_float(from_header.get('PC2_2'))
+                    else:
+                        cdelt2 = to_float(from_header.get('CDELT2'))
+                        cd1_1 = cdelt1 * to_float(from_header.get('PC1_1'))
+                        cd1_2 = cdelt1 * to_float(from_header.get('PC1_2'))
+                        cd2_1 = cdelt2 * to_float(from_header.get('PC2_1'))
+                        cd2_2 = cdelt2 * to_float(from_header.get('PC2_2'))
+                    to_header['CD1_1'] = cd1_1
+                    to_header['CD1_2'] = cd1_2
+                    to_header['CD2_1'] = cd2_1
+                    to_header['CD2_2'] = cd2_2
+
 
 class PossumInputMapping(Possum1DMapping):
-    def __init__(self, storage_name, headers, clients, observable, observation):
-        super().__init__(storage_name, headers, clients, observable, observation)
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
 
     def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model
         Observation level."""
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
-        bp.configure_position_axes((1, 2))
-        bp.configure_time_axis(3)
-        bp.configure_energy_axis(4)
-        bp.configure_polarization_axis(5)
-
         bp.set('Plane.calibrationLevel', CalibrationLevel.RAW_STANDARD)
+
+        bp.configure_position_axes((1, 2))
+        bp.set('Chunk.position.resolution', '_get_position_resolution()')
+
+        bp.configure_energy_axis(3)
+        bp.configure_polarization_axis(4)
+
+        bp.configure_time_axis(5)
+        bp.set('Chunk.time.axis.axis.ctype', 'TIME')
+        bp.set('Chunk.time.axis.axis.cunit', 'd')
+        bp.set('Chunk.time.axis.function.naxis', 1)
+        bp.set('Chunk.time.axis.function.refCoord.pix', 0.5)
+        bp.set('Chunk.time.axis.function.refCoord.val', '_get_time_function_refcoord_val()')
+
         self._logger.debug('Done accumulate_bp.')
+
+    def _get_time_function_refcoord_val(self, ext):
+        date_obs = self._headers[ext].get('DATE-OBS')
+        if date_obs is not None:
+            result = get_datetime_mjd(date_obs)
+        return result
+    
+    def _update_artifact(self, artifact):
+        super()._update_artifact(artifact)
+        for part in artifact.parts.values():
+            for chunk in part.chunks:
+                if chunk.time is not None:
+                    chunk.time_axis = None
+                self._update_chunk_position(chunk)
+
+    def _update_chunk_position(self, chunk):
+        self._logger.debug(f'Begin update_position_function for {self._storage_name.obs_id}')
+        if chunk.position is not None:
+            header = self._headers[0]
+            cd1_1 = header.get('CD1_1')
+            if cd1_1 is None:
+                hdr = fits.Header()
+                Possum1DMapping._from_pc_to_cd(header, hdr)
+                for kw in [
+                    'CDELT1', 'CDELT2', 'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'CTYPE1', 'CTYPE2', 
+                    'CUNIT1', 'CUNIT2', 'NAXIS', 'NAXIS1', 'NAXIS2', 'DATE-OBS', 'EQUINOX',
+                ]:
+                    hdr[kw] = header.get(kw)
+                wcs_parser = FitsWcsParser(hdr, self._storage_name.obs_id, 0)   
+                wcs_parser.augment_position(chunk)
+        self._logger.debug(f'End update_function_position for {self._storage_name.obs_id}')           
 
 
 class PossumOutputMapping(Possum1DMapping):
-    def __init__(self, storage_name, headers, clients, observable, observation):
-        super().__init__(storage_name, headers, clients, observable, observation)
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
 
     def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model
@@ -305,23 +393,13 @@ class PossumOutputMapping(Possum1DMapping):
                             chunk.energy_axis = None
         return self._observation
 
-    def _get_position_resolution(self, ext):
-        bmaj = self._headers[ext]['BMAJ']
-        bmin = self._headers[ext]['BMIN']
-        # From
-        # https://open-confluence.nrao.edu/pages/viewpage.action?pageId=13697486
-        # Clare Chandler via JJK - 21-08-18
-        result = None
-        if bmaj is not None and bmaj != 'INF' and bmin is not None and bmin != 'INF':
-            result = 3600.0 * sqrt(bmaj * bmin)
-        return result
 
-
-def mapping_factory(storage_name, headers, clients, observable, observation):
+def mapping_factory(storage_name, headers, clients, observable, observation, config):
     if storage_name.is_1d_output:
-        result = Possum1DMapping(storage_name, headers, clients, observable, observation)
+        result = Possum1DMapping(storage_name, headers, clients, observable, observation, config)
     elif storage_name.is_output:
-        result = PossumOutputMapping(storage_name, headers, clients, observable, observation)
+        result = PossumOutputMapping(storage_name, headers, clients, observable, observation, config)
     else:
-        result = PossumInputMapping(storage_name, headers, clients, observable, observation)
+        result = PossumInputMapping(storage_name, headers, clients, observable, observation, config)
+    logging.error(f'Constructed {result.__class__.__name__} for mapping.')
     return result

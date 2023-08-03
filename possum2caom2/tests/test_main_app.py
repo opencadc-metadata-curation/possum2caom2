@@ -79,16 +79,16 @@ import glob
 import logging
 import os
 
-import conftest
-
 
 def pytest_generate_tests(metafunc):
-    obs_id_list = glob.glob(f'{conftest.TEST_DATA_DIR}/*.fits.header')
+    test_data_dir = f'{metafunc.config.invocation_dir}/data'
+    obs_id_list = glob.glob(f'{test_data_dir}/inputs/*.fits.header')
     metafunc.parametrize('test_name', obs_id_list)
 
 
 @patch('caom2utils.data_util.get_local_headers_from_fits')
-def test_main_app(header_mock, test_config, test_name):
+def test_main_app(header_mock, test_data_dir, test_config, test_name):
+    # logging.getLogger('root').setLevel(logging.DEBUG)
     header_mock.side_effect = ac.make_headers_from_file
     storage_name = main_app.PossumName(entry=test_name)
     metadata_reader = rdc.FileMetadataReader()
@@ -98,9 +98,9 @@ def test_main_app(header_mock, test_config, test_name):
     kwargs = {
         'storage_name': storage_name,
         'metadata_reader': metadata_reader,
+        'config': test_config,
     }
     expected_fqn = f'{test_name.replace(".fits.header", "")}.expected.xml'
-    expected = mc.read_obs_from_file(expected_fqn)
     in_fqn = expected_fqn.replace('.expected', '.in')
     actual_fqn = expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
@@ -109,17 +109,18 @@ def test_main_app(header_mock, test_config, test_name):
     if os.path.exists(in_fqn):
         observation = mc.read_obs_from_file(in_fqn)
     observation = fits2caom2_augmentation.visit(observation, **kwargs)
-    try:
+
+    if observation is None:
+        mc.write_obs_to_file(observation, actual_fqn)
+    else:
+        expected = mc.read_obs_from_file(expected_fqn)
         compare_result = get_differences(expected, observation)
-    except Exception as e:
-        mc.write_obs_to_file(observation, actual_fqn)
-        raise e
-    if compare_result is not None:
-        mc.write_obs_to_file(observation, actual_fqn)
-        compare_text = '\n'.join([r for r in compare_result])
-        msg = (
-            f'Differences found in observation {expected.observation_id}\n'
-            f'{compare_text}'
-        )
-        raise AssertionError(msg)
+        if compare_result is not None:
+            mc.write_obs_to_file(observation, actual_fqn)
+            compare_text = '\n'.join([r for r in compare_result])
+            msg = (
+                f'Differences found in observation {expected.observation_id}\n'
+                f'{compare_text}'
+            )
+            raise AssertionError(msg)
     # assert False  # cause I want to see logging messages

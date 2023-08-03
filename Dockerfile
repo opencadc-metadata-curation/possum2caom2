@@ -18,7 +18,7 @@ RUN git clone https://github.com/${OPENCADC_REPO}/caom2tools.git && \
 
 RUN pip install git+https://github.com/${OPENCADC_REPO}/caom2pipe@${OPENCADC_BRANCH}#egg=caom2pipe
 
-RUN pip install git+https://github.com/${OPENCADC_REPO}/vlass2caom2@${OPENCADC_BRANCH}#egg=vlass2caom2
+RUN pip install git+https://github.com/${OPENCADC_REPO}/possum2caom2@${OPENCADC_BRANCH}#egg=possum2caom2
 
 FROM python:${OPENCADC_PYTHON_VERSION}-slim
 WORKDIR /usr/src/app

@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2019.                            (c) 2019.
+#  (c) 2023.                            (c) 2023.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -80,6 +80,7 @@ import sys
 import traceback
 
 from caom2pipe.client_composable import ClientCollection
+from caom2pipe.data_source_composable import ListDirTimeBoxDataSource
 from caom2pipe.manage_composable import Config
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.run_composable import run_by_state, run_by_todo
@@ -88,7 +89,6 @@ from possum2caom2 import fits2caom2_augmentation, main_app
 from vos import Client
 
 
-POSSUM_BOOKMARK = 'possum_timestamp'
 META_VISITORS = [fits2caom2_augmentation]
 DATA_VISITORS = []
 
@@ -134,7 +134,17 @@ def run():
 def _run_incremental():
     """Uses a state file with a timestamp to identify the work to be done.
     """
-    return run_by_state( bookmark_name=POSSUM_BOOKMARK, meta_visitors=META_VISITORS, data_visitors=DATA_VISITORS)
+    config = Config()
+    config.get_executors()
+    data_source = ListDirTimeBoxDataSource(config)
+    name_builder = EntryBuilder(main_app.PossumName)
+    return run_by_state(
+        config=config,
+        sources=[data_source],
+        meta_visitors=META_VISITORS,
+        data_visitors=DATA_VISITORS,
+        name_builder=name_builder,
+    )
 
 
 def run_incremental():

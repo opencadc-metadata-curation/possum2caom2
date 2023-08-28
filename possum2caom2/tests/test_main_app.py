@@ -82,7 +82,7 @@ import os
 
 def pytest_generate_tests(metafunc):
     test_data_dir = f'{metafunc.config.invocation_dir}/data'
-    obs_id_list = glob.glob(f'{test_data_dir}/inputs/*.fits.header')
+    obs_id_list = glob.glob(f'{test_data_dir}/**/*.fits.header')
     metafunc.parametrize('test_name', obs_id_list)
 
 
@@ -111,16 +111,17 @@ def test_main_app(header_mock, test_data_dir, test_config, test_name):
     observation = fits2caom2_augmentation.visit(observation, **kwargs)
 
     if observation is None:
-        mc.write_obs_to_file(observation, actual_fqn)
+        assert False, f'Did not create observation for {test_name}'
     else:
-        expected = mc.read_obs_from_file(expected_fqn)
-        compare_result = get_differences(expected, observation)
-        if compare_result is not None:
+        if os.path.exists(expected_fqn):
+            expected = mc.read_obs_from_file(expected_fqn)
+            compare_result = get_differences(expected, observation)
+            if compare_result is not None:
+                mc.write_obs_to_file(observation, actual_fqn)
+                compare_text = '\n'.join([r for r in compare_result])
+                msg = f'Differences found in observation {expected.observation_id}\n{compare_text}'
+                raise AssertionError(msg)
+        else:
             mc.write_obs_to_file(observation, actual_fqn)
-            compare_text = '\n'.join([r for r in compare_result])
-            msg = (
-                f'Differences found in observation {expected.observation_id}\n'
-                f'{compare_text}'
-            )
-            raise AssertionError(msg)
+            assert False, f'nothing to compare to for {test_name}'
     # assert False  # cause I want to see logging messages

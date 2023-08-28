@@ -141,6 +141,10 @@ class PossumName(StorageName):
         return 'pilot' in self._file_id and 'RMSF1D' in self._file_id
 
     @property
+    def is_fwhm(self):
+        return self._file_id.endswith('_FWHM')
+
+    @property
     def is_output(self):
         return 'pilot' in self._file_id
 
@@ -287,6 +291,7 @@ class PossumInputMapping(Possum1DMapping):
 
         bp.configure_position_axes((1, 2))
         bp.set('Chunk.position.resolution', '_get_position_resolution()')
+        bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
 
         bp.configure_energy_axis(3)
         bp.configure_polarization_axis(4)
@@ -332,7 +337,7 @@ class PossumInputMapping(Possum1DMapping):
         self._logger.debug(f'End update_function_position for {self._storage_name.obs_id}')           
 
 
-class PossumOutputMapping(Possum1DMapping):
+class PossumSpatialTemporal(Possum1DMapping):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -342,16 +347,11 @@ class PossumOutputMapping(Possum1DMapping):
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
 
-        bp.configure_position_axes((1, 2))
-        bp.configure_polarization_axis(3)
-        bp.configure_custom_axis(4)
-
-        bp.configure_time_axis(5)
-
         bp.set('Plane.provenance.name', 'POSSUM')
         bp.clear('Plane.provenance.lastExecuted')
         bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
 
+        bp.configure_position_axes((1, 2))
         bp.clear('Chunk.position.axis.function.cd11')
         bp.clear('Chunk.position.axis.function.cd22')
         bp.add_attribute('Chunk.position.axis.function.cd11', 'CDELT1')
@@ -360,12 +360,11 @@ class PossumOutputMapping(Possum1DMapping):
         bp.add_attribute('Chunk.position.axis.function.cd22', 'CDELT2')
         bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
+        bp.configure_time_axis(5)
         bp.set('Chunk.time.axis.axis.ctype', 'TIME')
         bp.set('Chunk.time.axis.axis.cunit', 'd')
         bp.set('Chunk.time.axis.function.naxis', 1)
         bp.set('Chunk.time.axis.function.refCoord.pix', 0.5)
-
-        self._logger.debug('Done accumulate_bp.')
 
     def update(self, file_info):
         """Called to fill multiple CAOM model elements and/or attributes
@@ -394,12 +393,42 @@ class PossumOutputMapping(Possum1DMapping):
         return self._observation
 
 
+class PossumOutputMapping(PossumSpatialTemporal):
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+
+    def accumulate_blueprint(self, bp):
+        """Configure the telescope-specific ObsBlueprint at the CAOM model
+        Observation level."""
+        super().accumulate_blueprint(bp)
+        bp.configure_polarization_axis(3)
+        bp.configure_custom_axis(4)
+        self._logger.debug('Done accumulate_bp.')
+
+
+class FWHM(PossumSpatialTemporal):
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+
+    def accumulate_blueprint(self, bp):
+        """Configure the telescope-specific ObsBlueprint at the CAOM model
+        Observation level."""
+        super().accumulate_blueprint(bp)
+        bp.configure_custom_axis(3)
+        bp.configure_polarization_axis(4)
+        self._logger.debug('Done accumulate_bp.')
+
+
+
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
     if storage_name.is_1d_output:
         result = Possum1DMapping(storage_name, headers, clients, observable, observation, config)
     elif storage_name.is_output:
-        result = PossumOutputMapping(storage_name, headers, clients, observable, observation, config)
+        if storage_name.is_fwhm:
+            result = FWHM(storage_name, headers, clients, observable, observation, config)
+        else:
+            result = PossumOutputMapping(storage_name, headers, clients, observable, observation, config)
     else:
         result = PossumInputMapping(storage_name, headers, clients, observable, observation, config)
-    logging.error(f'Constructed {result.__class__.__name__} for mapping.')
+    logging.debug(f'Constructed {result.__class__.__name__} for mapping.')
     return result

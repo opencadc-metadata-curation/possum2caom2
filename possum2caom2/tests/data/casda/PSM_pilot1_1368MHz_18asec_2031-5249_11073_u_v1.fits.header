@@ -1,0 +1,107 @@
+# HDU 0 in PSM_pilot1_1368MHz_18asec_2031-5249_11073_u_v1.fits:
+SIMPLE  =                    T /Standard FITS                                   
+BITPIX  =                  -32 /Floating point (32 bit)                         
+NAXIS   =                    4                                                  
+NAXIS1  =                 2048                                                  
+NAXIS2  =                 2048                                                  
+NAXIS3  =                  144                                                  
+NAXIS4  =                    1                                                  
+EXTEND  =                    T                                                  
+BSCALE  =   1.000000000000E+00 /PHYSICAL = PIXEL*BSCALE + BZERO                 
+BZERO   =   0.000000000000E+00                                                  
+BUNIT   = 'Jy/beam '           / Brightness (pixel) unit                        
+BTYPE   = 'Intensity'          /                                                
+EQUINOX =   2.000000000000E+03                                                  
+RADESYS = 'FK5     '                                                            
+LONPOLE =   0.000000000000E+00                                                  
+LATPOLE =   9.000000000000E+01                                                  
+PC1_1   =   7.071067811865E-01                                                  
+PC2_1   =  -7.071067811865E-01                                                  
+PC3_1   =   0.000000000000E+00                                                  
+PC4_1   =   0.000000000000E+00                                                  
+PC1_2   =   7.071067811865E-01                                                  
+PC2_2   =   7.071067811865E-01                                                  
+PC3_2   =   0.000000000000E+00                                                  
+PC4_2   =   0.000000000000E+00                                                  
+PC1_3   =   0.000000000000E+00                                                  
+PC2_3   =   0.000000000000E+00                                                  
+PC3_3   =   1.000000000000E+00                                                  
+PC4_3   =   0.000000000000E+00                                                  
+PC1_4   =   0.000000000000E+00                                                  
+PC2_4   =   0.000000000000E+00                                                  
+PC3_4   =   0.000000000000E+00                                                  
+PC4_4   =   1.000000000000E+00                                                  
+CTYPE1  = 'RA---HPX'                                                            
+CRVAL1  =   0.000000000000E+00                                                  
+CDELT1  =  -9.710633743374E-04                                                  
+CRPIX1  =  -7.577400118190E+04                                                  
+CUNIT1  = 'deg     '                                                            
+CTYPE2  = 'DEC--HPX'                                                            
+CRVAL2  =   0.000000000000E+00                                                  
+CDELT2  =   9.710633743374E-04                                                  
+CRPIX2  =   4.098000080952E+03                                                  
+CUNIT2  = 'deg     '                                                            
+CTYPE3  = 'FREQ    '                                                            
+CRVAL3  =   1.295990740741E+09                                                  
+CDELT3  =   1.000000000000E+06                                                  
+CRPIX3  =   1.000000000000E+00                                                  
+CUNIT3  = 'Hz      '                                                            
+CTYPE4  = 'STOKES  '                                                            
+CRVAL4  =                  3.0                                                  
+CDELT4  =   1.000000000000E+00                                                  
+CRPIX4  =   1.000000000000E+00                                                  
+CUNIT4  = '        '                                                            
+PV2_1   =   4.000000000000E+00                                                  
+PV2_2   =   3.000000000000E+00                                                  
+RESTFRQ =   1.420405751786E+09 /Rest Frequency (Hz)                             
+SPECSYS = 'TOPOCENT'           /Spectral reference frame                        
+ALTRVAL =   2.878005282040E+07 /Alternate frequency reference value             
+ALTRPIX =   1.000000000000E+00 /Alternate frequency reference pixel             
+VELREF  =                    3 /1 LSR, 2 HEL, 3 OBS, +256 Radio                 
+COMMENT casacore non-standard usage: 4 LSD, 5 GEO, 6 SOU, 7 GAL                 
+DATE    = '2023-05-10T15:13:05.379072' /Date FITS file was written              
+TIMESYS = 'UTC     '           /Time system for HDU                             
+ORIGIN  = 'ASKAPsoft'                                                           
+TELECOP = 'ASKAP   '                                                            
+PROJECT = '        '                                                            
+SBID    = '        '                                                            
+DURATION= '        '                                                            
+COMMENT  /                                                                      
+COMMENT  /                                                                      
+COMMENT  /                                                                      
+COMMENT  /                                                                      
+COMMENT  /                                                                      
+COMMENT  /                                                                      
+BMAJ    =                0.005 / Restoring beam major axis                      
+BMIN    =                0.005 / Restoring beam minor axis                      
+BPA     =                   0. / Restoring beam position angle                  
+
+# HDU 1 in PSM_pilot1_1368MHz_18asec_2031-5249_11073_u_v1.fits:
+XTENSION= 'BINTABLE'           / binary table extension                         
+BITPIX  =                    8 / 8-bit bytes                                    
+NAXIS   =                    2 / 2-dimensional binary table                     
+NAXIS1  =                   64 / width of table in bytes                        
+NAXIS2  =                    2 / number of rows in table                        
+PCOUNT  =                    0 / size of special data area                      
+GCOUNT  =                    1 / one data group (required keyword)              
+TFIELDS =                    7 / number of fields in each row                   
+TTYPE1  = 'BEAM    '           / label for field   1                            
+TFORM1  = '1J      '           / data format of field: 4-byte INTEGER           
+TTYPE2  = 'NAME    '           / label for field   2                            
+TFORM2  = '20A     '           / data format of field: ASCII Character          
+TTYPE3  = 'RA      '           / label for field   3                            
+TFORM3  = '1D  }U  '           / data format of field: 8-byte DOUBLE            
+TUNIT3  = 'deg     '           / physical unit of field                         
+TTYPE4  = 'DEC     '           / label for field   4                            
+TFORM4  = '1D  }U  '           / data format of field: 8-byte DOUBLE            
+TUNIT4  = 'deg     '           / physical unit of field                         
+TTYPE5  = 'BMAJ    '           / label for field   5                            
+TFORM5  = '1D  }U  '           / data format of field: 8-byte DOUBLE            
+TUNIT5  = 'arcsec  '           / physical unit of field                         
+TTYPE6  = 'BMIN    '           / label for field   6                            
+TFORM6  = '1D  }U  '           / data format of field: 8-byte DOUBLE            
+TUNIT6  = 'arcsec  '           / physical unit of field                         
+TTYPE7  = 'BPA     '           / label for field   7                            
+TFORM7  = '1D  }U  '           / data format of field: 8-byte DOUBLE            
+TUNIT7  = 'deg     '           / physical unit of field                         
+EXTNAME = 'MOSAIC  '           / name of this binary table extension            

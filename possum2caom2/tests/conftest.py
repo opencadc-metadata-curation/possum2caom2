@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -73,7 +72,8 @@ import pytest
 
 
 COLLECTION = 'POSSUM'
-SCHEME = 'cadc'
+# follow the RACS naming patterns
+SCHEME = 'casda'
 PREVIEW_SCHEME = 'cadc'
 
 

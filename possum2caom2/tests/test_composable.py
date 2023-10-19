@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -99,8 +98,8 @@ def test_run_by_state(clients_mock, do_one_mock, end_time_mock, get_work_mock, t
         State.write_bookmark(test_config.state_fqn, test_config.bookmark, start_time)
         Config.write_to_file(test_config)
 
-        test_f_name = 'PSM_944MHz_18asec_2226-5552_11268_i_v1.fits'
-        test_obs_id = '944MHz_18asec_2226-5552_11268'
+        test_f_name = 'PSM_pilot1_944MHz_18asec_2226-5552_11268_i_v1.fits'
+        test_obs_id = '944MHz_18asec_2226-5552_11268_pilot1'
         do_one_mock.return_value = 0
         get_work_mock.side_effect = lambda x, y, z: [
             StateRunnerMeta(

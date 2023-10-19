@@ -68,15 +68,21 @@
 #
 
 """
-This module implements the ObsBlueprint mapping, as well as the workflow 
-entry point that executes the workflow.
+This module implements the ObsBlueprint mapping.
+
+Temporal WCS:
+
+Cameron Van Eck - 17-10-23 - At present, most of the tiles don't have any observation date in the headers. A few do,
+but they are likely not accurate (they somehow survived mosaicking?). Strongly prefer not to have observation dates
+attached to these data -- since the relationship between obs. date and files is complicated, users should consult
+our metadata database to determine which files are relevant.
 """
 
 import logging
 import traceback
 
-from math import sqrt
 from os.path import basename
+from urllib import parse as parse
 
 from astropy.io import fits
 
@@ -92,12 +98,12 @@ __all__ = ['PossumName', 'mapping_factory']
 
 class PossumName(StorageName):
     """
-    Inputs:
-    PSM_944MHz_18asec_2226-5552_11268_i_v1.fits
-    PSM_944MHz_18asec_2226-5552_11268_q_v1.fits
-    PSM_944MHz_18asec_2226-5552_11268_u_v1.fits
+    From AusSRC:
+    PSM_pilot1_944MHz_18asec_2226-5552_11268_i_v1.fits
+    PSM_pilot1_944MHz_18asec_2226-5552_11268_q_v1.fits
+    PSM_pilot1_944MHz_18asec_2226-5552_11268_u_v1.fits
 
-    Outputs:
+    From POSSUM Group:
     PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_ampPeakPIfitEff.fits
     PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_coeff0err.fits
     PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_coeff0.fits
@@ -137,29 +143,30 @@ class PossumName(StorageName):
         super(PossumName, self).__init__(file_name=basename(entry.replace('.header', '')), source_names=[entry])
 
     @property
-    def is_1d_output(self):
-        return 'pilot' in self._file_id and 'RMSF1D' in self._file_id
+    def file_uri(self):
+        """The CADC Storage URI for the file."""
+        current_scheme = self._get_scheme()
+        return self._get_uri(self._file_name.replace('.gz', '').replace('.header', ''), current_scheme)
 
-    @property
-    def is_fwhm(self):
-        return self._file_id.endswith('_FWHM')
-
-    @property
-    def is_output(self):
-        return 'pilot' in self._file_id
-
-    def is_valid(self):
-        return True
+    def set_destination_uris(self):
+        for entry in self._source_names:
+            temp = parse.urlparse(entry)
+            base_name = basename(temp.path)
+            current_scheme = StorageName.scheme
+            if '_p3d_' in base_name or '_p1d_' in base_name:
+                current_scheme = StorageName.preview_scheme
+            if '.fits' in entry:
+                self._destination_uris.append(
+                    self._get_uri(base_name.replace('.gz', '').replace('.header', ''), current_scheme)
+                )
+            else:
+                self._destination_uris.append(self._get_uri(base_name, current_scheme))
 
     def set_obs_id(self):
-        # picking the common prefix to start with, e.g. 944MHz_18asec_2226-5552_11268
-        # leave off the "PSM" and "PSM_pilot1" because it's inconsistent between the inputs and the outputs
+        # picking the common prefix, e.g. 944MHz_pilot1_18asec_2226-5552_11268, and then re-organize it a bit
+        # leave off the "PSM" because collection is POSSUM
         bits = self._file_id.split('_')
-
-        if self.is_output:
-            self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}'
-        else:
-            self._obs_id = f'{bits[1]}_{bits[2]}_{bits[3]}_{bits[4]}'
+        self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}_{bits[1]}'
 
     def set_product_id(self):
         bits = self._file_id.split('_')
@@ -167,12 +174,21 @@ class PossumName(StorageName):
             self._product_id = '3d_pipeline'
         elif '_p1d_' in self._file_id:
             self._product_id = '1d_pipeline'
-        elif bits[5] == 'i':
+        elif bits[6] == 'i':
             self._product_id = 'raw_i'
-        elif bits[5] == 'q' or bits[5] == 'u':
+        elif bits[6] == 'q' or bits[6] == 'u':
             self._product_id = 'raw_qu'
+        elif bits[6] == 't0' or bits[6] == 't1':
+            self._product_id = 'single_channel_taylor'
         else:
             raise CadcException(f'Unexcepted file naming pattern {self._file_id}')
+
+    def _get_scheme(self):
+        if self._product_id in ['raw_i', 'raw_qu', 'single_channel_taylor']:
+            result = StorageName.scheme
+        else:
+            result = StorageName.preview_scheme
+        return result
 
 
 class PossumValueRepair(ValueRepairCache):
@@ -202,6 +218,8 @@ class Possum1DMapping(cc.TelescopeMapping):
         Observation level."""
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
+        # JW - 17-10-23 - Use ASKAP
+        bp.set('Observation.instrument.name', 'ASKAP')
         bp.set('Observation.metaRelease', '2025-01-01T00:00:00.000')
         bp.add_attribute('Observation.proposal.id', 'PROJECT')
         bp.set('Plane.calibrationLevel', CalibrationLevel.CALIBRATED)
@@ -238,18 +256,22 @@ class Possum1DMapping(cc.TelescopeMapping):
             result = DataProductType.MEASUREMENTS
         elif naxis == 2:
             result = DataProductType.IMAGE
+        elif naxis == 4:
+            naxis3 = self._headers[ext].get('NAXIS3')
+            naxis4 = self._headers[ext].get('NAXIS4')
+            if naxis3 == 1 and naxis4 == 1:
+                result = DataProductType.IMAGE
         return result
 
-    def _get_position_resolution(self, ext):
-        bmaj = self._headers[ext].get('BMAJ')
-        bmin = self._headers[ext].get('BMIN')
-        # From
-        # https://open-confluence.nrao.edu/pages/viewpage.action?pageId=13697486
-        # Clare Chandler via JJK - 21-08-18
-        result = None
-        if bmaj is not None and bmaj != 'INF' and bmin is not None and bmin != 'INF':
-            result = 3600.0 * sqrt(bmaj * bmin)
-        return result
+    def _update_artifact(self, artifact):
+        delete_these = []
+        for part in artifact.parts.values():
+            if len(part.chunks) == 0:
+                delete_these.append(part.name)
+
+        for entry in delete_these:
+            artifact.parts.pop(entry)
+            self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
 
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):
@@ -278,7 +300,7 @@ class Possum1DMapping(cc.TelescopeMapping):
                     to_header['CD2_2'] = cd2_2
 
 
-class PossumInputMapping(Possum1DMapping):
+class InputTileMapping(Possum1DMapping):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -287,36 +309,33 @@ class PossumInputMapping(Possum1DMapping):
         Observation level."""
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
-        bp.set('Plane.calibrationLevel', CalibrationLevel.RAW_STANDARD)
+        bp.set('Plane.calibrationLevel', CalibrationLevel.CALIBRATED)
+        bp.clear('Plane.provenance.name')
+        bp.add_attribute('Plane.provenance.name', 'ORIGIN')
+        # JW - 17-10-23 - Use AusSRC for producer
+        bp.set('Plane.provenance.producer', 'AusSRC')
+        bp.set_default('Plane.provenance.reference', 'https://possum-survey.org/')
+        bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
+        bp.set_default('Plane.provenance.project', 'POSSUM')
 
         bp.configure_position_axes((1, 2))
-        bp.set('Chunk.position.resolution', '_get_position_resolution()')
-        bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
+        bp.clear('Chunk.position.resolution')
+        # JW - 17-10-23 - Use either BMAJ or BMIN
+        bp.add_attribute('Chunk.position.resolution', 'BMAJ')
 
         bp.configure_energy_axis(3)
-        bp.configure_polarization_axis(4)
+        bp.set_default('Chunk.energy.specsys', 'TOPOCENT')
 
-        bp.configure_time_axis(5)
-        bp.set('Chunk.time.axis.axis.ctype', 'TIME')
-        bp.set('Chunk.time.axis.axis.cunit', 'd')
-        bp.set('Chunk.time.axis.function.naxis', 1)
-        bp.set('Chunk.time.axis.function.refCoord.pix', 0.5)
-        bp.set('Chunk.time.axis.function.refCoord.val', '_get_time_function_refcoord_val()')
+        bp.configure_polarization_axis(4)
 
         self._logger.debug('Done accumulate_bp.')
 
-    def _get_time_function_refcoord_val(self, ext):
-        date_obs = self._headers[ext].get('DATE-OBS')
-        if date_obs is not None:
-            result = get_datetime_mjd(date_obs)
-        return result
-    
     def _update_artifact(self, artifact):
-        super()._update_artifact(artifact)
         for part in artifact.parts.values():
             for chunk in part.chunks:
-                if chunk.time is not None:
-                    chunk.time_axis = None
+                if chunk.energy is not None:
+                    # JW - 17-10-23 - remove restfrq
+                    chunk.energy.restfrq = None
                 self._update_chunk_position(chunk)
 
     def _update_chunk_position(self, chunk):
@@ -328,16 +347,69 @@ class PossumInputMapping(Possum1DMapping):
                 hdr = fits.Header()
                 Possum1DMapping._from_pc_to_cd(header, hdr)
                 for kw in [
-                    'CDELT1', 'CDELT2', 'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'CTYPE1', 'CTYPE2', 
+                    'CDELT1', 'CDELT2', 'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'CTYPE1', 'CTYPE2',
                     'CUNIT1', 'CUNIT2', 'NAXIS', 'NAXIS1', 'NAXIS2', 'DATE-OBS', 'EQUINOX',
                 ]:
                     hdr[kw] = header.get(kw)
-                wcs_parser = FitsWcsParser(hdr, self._storage_name.obs_id, 0)   
+                wcs_parser = FitsWcsParser(hdr, self._storage_name.obs_id, 0)
                 wcs_parser.augment_position(chunk)
-        self._logger.debug(f'End update_function_position for {self._storage_name.obs_id}')           
+        self._logger.debug(f'End update_function_position for {self._storage_name.obs_id}')
 
 
-class PossumSpatialTemporal(Possum1DMapping):
+class TaylorMapping(InputTileMapping):
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+
+    def accumulate_blueprint(self, bp):
+        """Configure the telescope-specific ObsBlueprint at the CAOM model
+        Observation level."""
+        self._logger.debug('Begin accumulate_bp.')
+        super().accumulate_blueprint(bp)
+        bp.set('Plane.provenance.name', '_get_plane_provenance_name()')
+        bp.set('Plane.provenance.version', '_get_plane_provenance_version()')
+
+        bp.configure_time_axis(5)
+        bp.set('Chunk.time.axis.axis.ctype', 'TIME')
+        bp.set('Chunk.time.axis.axis.cunit', 'd')
+        bp.set('Chunk.time.axis.function.naxis', 1)
+        bp.set('Chunk.time.axis.function.refCoord.pix', 0.5)
+        bp.set('Chunk.time.axis.function.refCoord.val', '_get_time_function_refcoord_val()')
+
+        self._logger.debug('Done accumulate_bp.')
+
+    def _get_plane_provenance_name(self, ext):
+        origin = self._headers[ext].get('ORIGIN')
+        result = None
+        if origin:
+            bits = origin.split(' ')
+            other_bits = bits[2].split(':')
+            result = f'{bits[0]} {other_bits[0]}'
+        return result
+
+    def _get_plane_provenance_version(self, ext):
+        origin = self._headers[ext].get('ORIGIN')
+        result = None
+        if origin:
+            bits = origin.split(' ')
+            other_bits = bits[2].split(':')
+            result = f'{bits[1]} {other_bits[1]}'
+        return result
+
+    def _get_time_function_refcoord_val(self, ext):
+        date_obs = self._headers[ext].get('DATE-OBS')
+        if date_obs is not None:
+            result = get_datetime_mjd(date_obs)
+        return result
+
+    def _update_artifact(self, artifact):
+        super()._update_artifact(artifact)
+        for part in artifact.parts.values():
+            for chunk in part.chunks:
+                if chunk.time_axis is not None:
+                    chunk.time_axis = None
+
+
+class OutputSpatialTemporal(Possum1DMapping):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -358,7 +430,8 @@ class PossumSpatialTemporal(Possum1DMapping):
         bp.set('Chunk.position.axis.function.cd12', 0.0)
         bp.set('Chunk.position.axis.function.cd21', 0.0)
         bp.add_attribute('Chunk.position.axis.function.cd22', 'CDELT2')
-        bp.set('Chunk.position.resolution', '_get_position_resolution()')
+        bp.clear('Chunk.position.resolution')
+        bp.add_attribute('Chunk.position.resolution', 'BMAJ')
 
         bp.configure_time_axis(5)
         bp.set('Chunk.time.axis.axis.ctype', 'TIME')
@@ -393,7 +466,7 @@ class PossumSpatialTemporal(Possum1DMapping):
         return self._observation
 
 
-class PossumOutputMapping(PossumSpatialTemporal):
+class Output3DMapping(OutputSpatialTemporal):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -406,7 +479,7 @@ class PossumOutputMapping(PossumSpatialTemporal):
         self._logger.debug('Done accumulate_bp.')
 
 
-class FWHM(PossumSpatialTemporal):
+class OutputFWHM(OutputSpatialTemporal):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -419,16 +492,17 @@ class FWHM(PossumSpatialTemporal):
         self._logger.debug('Done accumulate_bp.')
 
 
-
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
-    if storage_name.is_1d_output:
+    if storage_name.product_id == '1d_pipeline':
         result = Possum1DMapping(storage_name, headers, clients, observable, observation, config)
-    elif storage_name.is_output:
-        if storage_name.is_fwhm:
-            result = FWHM(storage_name, headers, clients, observable, observation, config)
+    elif storage_name.product_id == '3d_pipeline':
+        if '_FWHM' in storage_name.file_name:
+            result = OutputFWHM(storage_name, headers, clients, observable, observation, config)
         else:
-            result = PossumOutputMapping(storage_name, headers, clients, observable, observation, config)
+            result = Output3DMapping(storage_name, headers, clients, observable, observation, config)
+    elif storage_name.product_id == 'single_channel_taylor':
+        result = TaylorMapping(storage_name, headers, clients, observable, observation, config)
     else:
-        result = PossumInputMapping(storage_name, headers, clients, observable, observation, config)
+        result = InputTileMapping(storage_name, headers, clients, observable, observation, config)
     logging.debug(f'Constructed {result.__class__.__name__} for mapping.')
     return result

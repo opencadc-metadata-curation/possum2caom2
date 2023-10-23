@@ -12,6 +12,12 @@
     <caom2:name>exposure</caom2:name>
   </caom2:algorithm>
   <caom2:intent>science</caom2:intent>
+  <caom2:telescope>
+    <caom2:name>ASKAP</caom2:name>
+    <caom2:geoLocationX>-2558266.717765</caom2:geoLocationX>
+    <caom2:geoLocationY>5095672.176508</caom2:geoLocationY>
+    <caom2:geoLocationZ>-2849020.838078</caom2:geoLocationZ>
+  </caom2:telescope>
   <caom2:instrument>
     <caom2:name>ASKAP</caom2:name>
   </caom2:instrument>

@@ -222,6 +222,10 @@ class Possum1DMapping(cc.TelescopeMapping):
         bp.set('Observation.instrument.name', 'ASKAP')
         bp.set('Observation.metaRelease', '2025-01-01T00:00:00.000')
         bp.add_attribute('Observation.proposal.id', 'PROJECT')
+        bp.set_default('Observation.telescope.name', 'ASKAP')
+        bp.set_default('Observation.telescope.geoLocationX', -2558266.717765)
+        bp.set_default('Observation.telescope.geoLocationY', 5095672.176508)
+        bp.set_default('Observation.telescope.geoLocationZ', -2849020.838078)
         bp.set('Plane.calibrationLevel', CalibrationLevel.CALIBRATED)
         bp.set('Plane.dataProductType', '_get_data_product_type()')
         bp.set('Plane.metaRelease', '2025-01-01T00:00:00.000')
@@ -268,6 +272,18 @@ class Possum1DMapping(cc.TelescopeMapping):
         for part in artifact.parts.values():
             if len(part.chunks) == 0:
                 delete_these.append(part.name)
+            else:
+                for chunk in part.chunks:
+                    if (
+                        chunk.custom is None
+                        and chunk.energy is None
+                        and chunk.observable is None
+                        and chunk.polarization is None
+                        and chunk.position is None
+                        and chunk.time is None
+                    ):
+                        delete_these.append(part.name)
+                        break
 
         for entry in delete_these:
             artifact.parts.pop(entry)
@@ -331,12 +347,15 @@ class InputTileMapping(Possum1DMapping):
         self._logger.debug('Done accumulate_bp.')
 
     def _update_artifact(self, artifact):
+        self._logger.debug(f'Begin _update_artifact for {artifact.uri}')
+        super()._update_artifact(artifact)
         for part in artifact.parts.values():
             for chunk in part.chunks:
                 if chunk.energy is not None:
                     # JW - 17-10-23 - remove restfrq
                     chunk.energy.restfrq = None
                 self._update_chunk_position(chunk)
+        self._logger.debug('End _update_artifact')
 
     def _update_chunk_position(self, chunk):
         self._logger.debug(f'Begin update_position_function for {self._storage_name.obs_id}')

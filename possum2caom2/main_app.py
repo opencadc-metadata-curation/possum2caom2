@@ -81,6 +81,7 @@ our metadata database to determine which files are relevant.
 import logging
 import traceback
 
+from datetime import datetime, timedelta
 from os.path import basename
 from urllib import parse as parse
 
@@ -179,12 +180,14 @@ class PossumName(StorageName):
         elif bits[6] == 'q' or bits[6] == 'u':
             self._product_id = 'raw_qu'
         elif bits[6] == 't0' or bits[6] == 't1':
-            self._product_id = 'single_channel_taylor'
+            # Cameron Van Eck - 23-10-23
+            # “mfs_i_t0" or “multifrequencysynthesis_i_t0” for the image product ProductID
+            self._product_id = f'multifrequencysynthesis_{bits[7]}_{bits[6]}'
         else:
             raise CadcException(f'Unexcepted file naming pattern {self._file_id}')
 
     def _get_scheme(self):
-        if self._product_id in ['raw_i', 'raw_qu', 'single_channel_taylor']:
+        if self._product_id in ['raw_i', 'raw_qu'] or self._product_id.startswith('multifrequencysynthesis_'):
             result = StorageName.scheme
         else:
             result = StorageName.preview_scheme
@@ -212,6 +215,10 @@ class Possum1DMapping(cc.TelescopeMapping):
 
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
+        # Cameron Van Eck - 23-10-23
+        # Set release date to be 12 months after ingest. That’s the current POSSUM policy: data goes public 12
+        # months after being generated. It doesn't have to be particularly precise: date of ingest + increment year by 1
+        self._1_year_after = datetime.now() + timedelta(days=365)
 
     def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model
@@ -220,16 +227,16 @@ class Possum1DMapping(cc.TelescopeMapping):
         super().accumulate_blueprint(bp)
         # JW - 17-10-23 - Use ASKAP
         bp.set('Observation.instrument.name', 'ASKAP')
-        bp.set('Observation.metaRelease', '2025-01-01T00:00:00.000')
-        bp.add_attribute('Observation.proposal.id', 'PROJECT')
+        bp.set('Observation.metaRelease', self._1_year_after)
+        bp.set('Observation.proposal.id', '_get_proposal_id()')
         bp.set_default('Observation.telescope.name', 'ASKAP')
         bp.set_default('Observation.telescope.geoLocationX', -2558266.717765)
         bp.set_default('Observation.telescope.geoLocationY', 5095672.176508)
         bp.set_default('Observation.telescope.geoLocationZ', -2849020.838078)
         bp.set('Plane.calibrationLevel', CalibrationLevel.CALIBRATED)
         bp.set('Plane.dataProductType', '_get_data_product_type()')
-        bp.set('Plane.metaRelease', '2025-01-01T00:00:00.000')
-        bp.set('Plane.dataRelease', '2025-01-01T00:00:00.000')
+        bp.set('Plane.metaRelease', self._1_year_after)
+        bp.set('Plane.dataRelease', self._1_year_after)
         bp.set('Artifact.productType', ProductType.SCIENCE)
         bp.set('Artifact.releaseType', ReleaseType.DATA)
         self._logger.debug('Done accumulate_bp.')
@@ -265,6 +272,25 @@ class Possum1DMapping(cc.TelescopeMapping):
             naxis4 = self._headers[ext].get('NAXIS4')
             if naxis3 == 1 and naxis4 == 1:
                 result = DataProductType.IMAGE
+        return result
+
+    def _get_position_resolution(self, ext):
+        result = None
+        # JW - 17-10-23 - Use either BMAJ or BMIN
+        # Cameron Van Eck - 19-10-23 - Prefer BMAJ
+        bmaj = self._headers[ext].get('BMAJ')
+        if bmaj:
+            # Cameron Van Eck - 23-10-23
+            # FITS header value is in degrees, convert to arcseconds
+            result = bmaj * 3600.0
+        return result
+
+    def _get_proposal_id(self, ext):
+        # Cameron Van Eck - 23-10-23
+        # For proposalID: All pilot data can have value “AS103". All full-survey data will have value “AS203”.
+        result = 'AS203'
+        if '_pilot' in self._storage_name.file_name:
+            result = 'AS103'
         return result
 
     def _update_artifact(self, artifact):
@@ -335,9 +361,7 @@ class InputTileMapping(Possum1DMapping):
         bp.set_default('Plane.provenance.project', 'POSSUM')
 
         bp.configure_position_axes((1, 2))
-        bp.clear('Chunk.position.resolution')
-        # JW - 17-10-23 - Use either BMAJ or BMIN
-        bp.add_attribute('Chunk.position.resolution', 'BMAJ')
+        bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
         bp.configure_energy_axis(3)
         bp.set_default('Chunk.energy.specsys', 'TOPOCENT')
@@ -449,8 +473,7 @@ class OutputSpatialTemporal(Possum1DMapping):
         bp.set('Chunk.position.axis.function.cd12', 0.0)
         bp.set('Chunk.position.axis.function.cd21', 0.0)
         bp.add_attribute('Chunk.position.axis.function.cd22', 'CDELT2')
-        bp.clear('Chunk.position.resolution')
-        bp.add_attribute('Chunk.position.resolution', 'BMAJ')
+        bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
         bp.configure_time_axis(5)
         bp.set('Chunk.time.axis.axis.ctype', 'TIME')
@@ -519,7 +542,7 @@ def mapping_factory(storage_name, headers, clients, observable, observation, con
             result = OutputFWHM(storage_name, headers, clients, observable, observation, config)
         else:
             result = Output3DMapping(storage_name, headers, clients, observable, observation, config)
-    elif storage_name.product_id == 'single_channel_taylor':
+    elif storage_name.product_id.startswith('multifrequencysynthesis_'):
         result = TaylorMapping(storage_name, headers, clients, observable, observation, config)
     else:
         result = InputTileMapping(storage_name, headers, clients, observable, observation, config)

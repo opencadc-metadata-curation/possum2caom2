@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -148,6 +147,16 @@ class PossumName(StorageName):
         """The CADC Storage URI for the file."""
         current_scheme = self._get_scheme()
         return self._get_uri(self._file_name.replace('.gz', '').replace('.header', ''), current_scheme)
+
+    @property
+    def prev(self):
+        """The preview file name for the file."""
+        return f'{self._obs_id}_{self._product_id}_prev.jpg'
+
+    @property
+    def thumb(self):
+        """The thumbnail file name for the file."""
+        return f'{self._obs_id}_{self._product_id}_prev_256.jpg'
 
     def set_destination_uris(self):
         for entry in self._source_names:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -78,6 +77,7 @@ from caom2pipe import reader_composable as rdc
 import glob
 import logging
 import os
+import helpers
 
 
 def pytest_generate_tests(metafunc):
@@ -115,6 +115,7 @@ def test_main_app(header_mock, test_data_dir, test_config, test_name):
     else:
         if os.path.exists(expected_fqn):
             expected = mc.read_obs_from_file(expected_fqn)
+            helpers.set_release_date_values(observation)
             compare_result = get_differences(expected, observation)
             if compare_result is not None:
                 mc.write_obs_to_file(observation, actual_fqn)

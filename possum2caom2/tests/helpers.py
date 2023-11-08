@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2022.                            (c) 2022.
+#  (c) 2023.                            (c) 2023.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -61,43 +61,19 @@
 #  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
 #                                       <http://www.gnu.org/licenses/>.
 #
-#  $Revision: 4 $
+#  Revision: 4
 #
 # ***********************************************************************
 #
 
-from os.path import dirname, join, realpath
-from caom2pipe.manage_composable import Config, StorageName
-import pytest
+from datetime import datetime
 
 
-COLLECTION = 'POSSUM'
-# Séverin Gaudet - 08-11-23 - files only archived at CADC, scheme is 'cadc'
-SCHEME = 'cadc'
-PREVIEW_SCHEME = 'cadc'
-
-
-@pytest.fixture()
-def test_config():
-    config = Config()
-    config.collection = COLLECTION
-    config.preview_scheme = PREVIEW_SCHEME
-    config.scheme = SCHEME
-    config.logging_level = 'INFO'
-    config.meta_read_groups = [
-        'ivo://cadc.nrc.ca/gms?CADC',
-        'ivo://cadc.nrc.ca/gms?POSSUM-RW',
-        'ivo://cadc.nrc.ca/gms?POSSUM_Members',
-    ]
-    config.data_read_groups = config.meta_read_groups
-    StorageName.collection = config.collection
-    StorageName.preview_scheme = config.preview_scheme
-    StorageName.scheme = config.scheme
-    return config
-
-
-@pytest.fixture()
-def test_data_dir():
-    this_dir = dirname(realpath(__file__))
-    fqn = join(this_dir, 'data')
-    return fqn
+def set_release_date_values(observation):
+    # the release date is "the time at which the file is received at CADC", which is random, and therfore hard to
+    # test with, so over-ride with a known value before doing the comparison to the expected value
+    release_date = datetime.strptime('2025-01-01T00:00:00', '%Y-%m-%dT%H:%M:%S')
+    observation.meta_release = release_date
+    for plane in observation.planes.values():
+        plane.meta_release = release_date
+        plane.data_release = release_date

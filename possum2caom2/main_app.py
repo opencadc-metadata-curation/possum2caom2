@@ -204,7 +204,6 @@ class PossumName(StorageName):
 
 
 class PossumValueRepair(ValueRepairCache):
-
     VALUE_REPAIR = {
         'chunk.custom.axis.axis.cunit': {
             'rad / m2': 'rad/m**2',
@@ -219,7 +218,6 @@ class PossumValueRepair(ValueRepairCache):
 
 
 class Possum1DMapping(cc.TelescopeMapping):
-
     value_repair = PossumValueRepair()
 
     def __init__(self, storage_name, headers, clients, observable, observation, config):
@@ -264,9 +262,7 @@ class Possum1DMapping(cc.TelescopeMapping):
             tb = traceback.format_exc()
             self._logger.debug(tb)
             self._logger.error(e)
-            self._logger.error(
-                f'Terminating ingestion for {self._observation.observation_id}'
-            )
+            self._logger.error(f'Terminating ingestion for {self._observation.observation_id}')
             return None
 
     def _get_data_product_type(self, ext):
@@ -326,29 +322,29 @@ class Possum1DMapping(cc.TelescopeMapping):
 
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):
-            cd1_1 = from_header.get('CD1_1')
-            # caom2IngestSitelle.py, l745
-            # CW
-            # Be able to handle any of the 3 wcs systems used
-            if cd1_1 is None:
-                pc1_1 = from_header.get('PC1_1')
-                if pc1_1 is not None:
-                    cdelt1 = to_float(from_header.get('CDELT1'))
-                    if cdelt1 is None:
-                        cd1_1 = to_float(from_header.get('PC1_1'))
-                        cd1_2 = to_float(from_header.get('PC1_2'))
-                        cd2_1 = to_float(from_header.get('PC2_1'))
-                        cd2_2 = to_float(from_header.get('PC2_2'))
-                    else:
-                        cdelt2 = to_float(from_header.get('CDELT2'))
-                        cd1_1 = cdelt1 * to_float(from_header.get('PC1_1'))
-                        cd1_2 = cdelt1 * to_float(from_header.get('PC1_2'))
-                        cd2_1 = cdelt2 * to_float(from_header.get('PC2_1'))
-                        cd2_2 = cdelt2 * to_float(from_header.get('PC2_2'))
-                    to_header['CD1_1'] = cd1_1
-                    to_header['CD1_2'] = cd1_2
-                    to_header['CD2_1'] = cd2_1
-                    to_header['CD2_2'] = cd2_2
+        cd1_1 = from_header.get('CD1_1')
+        # caom2IngestSitelle.py, l745
+        # CW
+        # Be able to handle any of the 3 wcs systems used
+        if cd1_1 is None:
+            pc1_1 = from_header.get('PC1_1')
+            if pc1_1 is not None:
+                cdelt1 = to_float(from_header.get('CDELT1'))
+                if cdelt1 is None:
+                    cd1_1 = to_float(from_header.get('PC1_1'))
+                    cd1_2 = to_float(from_header.get('PC1_2'))
+                    cd2_1 = to_float(from_header.get('PC2_1'))
+                    cd2_2 = to_float(from_header.get('PC2_2'))
+                else:
+                    cdelt2 = to_float(from_header.get('CDELT2'))
+                    cd1_1 = cdelt1 * to_float(from_header.get('PC1_1'))
+                    cd1_2 = cdelt1 * to_float(from_header.get('PC1_2'))
+                    cd2_1 = cdelt2 * to_float(from_header.get('PC2_1'))
+                    cd2_2 = cdelt2 * to_float(from_header.get('PC2_2'))
+                to_header['CD1_1'] = cd1_1
+                to_header['CD1_2'] = cd1_2
+                to_header['CD2_1'] = cd2_1
+                to_header['CD2_2'] = cd2_2
 
 
 class InputTileMapping(Possum1DMapping):
@@ -399,8 +395,21 @@ class InputTileMapping(Possum1DMapping):
                 hdr = fits.Header()
                 Possum1DMapping._from_pc_to_cd(header, hdr)
                 for kw in [
-                    'CDELT1', 'CDELT2', 'CRPIX1', 'CRPIX2', 'CRVAL1', 'CRVAL2', 'CTYPE1', 'CTYPE2',
-                    'CUNIT1', 'CUNIT2', 'NAXIS', 'NAXIS1', 'NAXIS2', 'DATE-OBS', 'EQUINOX',
+                    'CDELT1',
+                    'CDELT2',
+                    'CRPIX1',
+                    'CRPIX2',
+                    'CRVAL1',
+                    'CRVAL2',
+                    'CTYPE1',
+                    'CTYPE2',
+                    'CUNIT1',
+                    'CUNIT2',
+                    'NAXIS',
+                    'NAXIS1',
+                    'NAXIS2',
+                    'DATE-OBS',
+                    'EQUINOX',
                 ]:
                     hdr[kw] = header.get(kw)
                 wcs_parser = FitsWcsParser(hdr, self._storage_name.obs_id, 0)

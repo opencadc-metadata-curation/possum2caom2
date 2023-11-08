@@ -26,7 +26,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="0b75e8c6-8f6c-482f-9796-8059cd4c788f">
-      <caom2:productID>single_channel_taylor</caom2:productID>
+      <caom2:productID>multifrequencysynthesis_i_t0</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
@@ -51,7 +51,7 @@
       </caom2:provenance>
       <caom2:artifacts>
         <caom2:artifact caom2:id="84ed1070-b3f0-4c85-8138-813eeb992e04">
-          <caom2:uri>casda:POSSUM/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits</caom2:uri>
+          <caom2:uri>cadc:POSSUM/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
@@ -100,7 +100,7 @@
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
                     <caom2:equinox>2000.0</caom2:equinox>
-                    <caom2:resolution>0.005</caom2:resolution>
+                    <caom2:resolution>18.0</caom2:resolution>
                   </caom2:position>
                   <caom2:energy>
                     <caom2:axis>

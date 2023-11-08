@@ -71,91 +71,36 @@ import os
 from caom2pipe import manage_composable as mc
 from possum2caom2 import main_app, preview_augmentation
 
+
 TEST_FILES_DIR = '/test_files'
 
 
-def test_visit(test_config, tmp_path):
-
+def test_visit(test_data_dir, test_config, tmp_path):
     # this should result in two new artifacts being added to every plane:
     # one thumbnail, one preview
 
-    test_observable = mc.Observable(test_config)
-
     test_files = {
-        'PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.expected.xml' : [''],
-        # # processed spectrum
-        # 'visit_obs_start_v.xml': [
-        #     'dao_c122_2007_000882_v.fits',
-        #     'dao_c122_2007_000882.fits.gz',
-        # ],
-        # # processed image
-        # 'visit_obs_start_a.xml': [
-        #     'dao_c182_2016_004034_a.fits',
-        #     'dao_c182_2016_004034.fits.gz',
-        # ],
-        # 'dao_r182_1989_000369.xml': ['dao_r182_1989_000369.fits.gz'],
-        # 'dao_r122_1989_003111.xml': ['dao_r122_1989_003111.fits.gz'],
-        # 'dao_c122_2017_011124.xml': ['dao_c122_2017_011124.fits.gz'],
-        # 'dao_c182_2017_010870.xml': ['dao_c182_2017_010870.fits.gz'],
-        # 'dao_c182_2017_019322.xml': ['dao_c182_2017_019322.fits.gz'],
-        # 'dao_c182_2017_016292.xml': ['dao_c182_2017_016292.fits.gz'],
-        # 'visit_obs_start_e.xml': [
-        #     'dao_c122_2007_000881.fits.gz',
-        #     'dao_c122_2007_000881_e.fits',
-        # ],
-        # 'sky_cam_start.xml': ['a2020_06_17_07_00_01.fits'],
-    }
-
-    test_checksums = {
-        'cadc:DAO/dao_c122_2007_000881_e_256.png': 'md5:e68a3c389bbdf53cde0cca073c7a37c1',
-        'cadc:DAO/dao_c122_2007_000881_e_1024.png': 'md5:48065b2feb0fda3d7561c02b2890efaa',
-        'cadc:DAO/dao_c122_2007_000882_256.png': 'md5:1268e5b79e463ca75580d7e538d88a2a',
-        'cadc:DAO/dao_c122_2007_000882_1024.png': 'md5:5694ee03486899d3b14b404caab22505',
-        'cadc:DAO/dao_c122_2017_011124_256.png': 'md5:9793efcdeec043be8f0c77c7bf875cca',
-        'cadc:DAO/dao_c122_2017_011124_1024.png': 'md5:4d77005756fbed7fc3ae525591cc07db',
-        'cadc:DAO/dao_c182_2016_004034_256.png': 'md5:5c6b6816f8c0a54a0ff041b29247bdd5',
-        'cadc:DAO/dao_c182_2016_004034_1024.png': 'md5:455bddac53488acca46758fbc1d2b096',
-        'cadc:DAO/dao_c182_2017_010870_256.png': 'md5:106a6e0837fd00e971a37462266c2f66',
-        'cadc:DAO/dao_c182_2017_010870_1024.png': 'md5:bc92d495aa0e56eb4ea35f409932391e',
-        'cadc:DAO/dao_c182_2017_016292_256.png': 'md5:ef6bcc6501db0f64dfc7741f5ab37870',
-        'cadc:DAO/dao_c182_2017_016292_1024.png': 'md5:6c425b3606dd598be33b61dfef51d132',
-        'cadc:DAO/dao_c182_2017_019322_256.png': 'md5:dfca85e675f29a33ecdbabc91ed274bf',
-        'cadc:DAO/dao_c182_2017_019322_1024.png': 'md5:2818ddf6acb0f36655fbdfc9e19098e7',
-        'cadc:DAO/dao_r122_1989_003111_256.png': 'md5:7cb2344a84d195228d7fb866a83d031a',
-        'cadc:DAO/dao_r122_1989_003111_1024.png': 'md5:a864bc14955bc1f8524e8829c3ee2ee9',
-        'cadc:DAO/dao_r182_1989_000369_256.png': 'md5:5ef8f53784376b31a12dccb8671aca5e',
-        'cadc:DAO/dao_r182_1989_000369_1024.png': 'md5:2e14aefda2a74b5575f6a4d8d1b1b3cb',
-        'cadc:DAO/dao_c122_2007_000882_v_1024.png': 'md5:37cfb96bce27da93ede75eadabad7b8f',
-        'cadc:DAO/a2020_06_17_07_00_01_1024.png': 'md5:37cfb96bce27da93ede75eadabad7b8f',
+        'PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.expected.xml': [
+            'PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits',
+        ],
     }
 
     kwargs = {
-        'working_directory': TEST_FILES_DIR,
-        'cadc_client': None,
-        'stream': 'stream',
-        'observable': test_observable,
+        'working_directory': tmp_path.as_posix(),
     }
 
-    for entry in glob.glob(f'{TEST_FILES_DIR}/*.png'):
-        os.unlink(entry)
-
     for key, value in test_files.items():
-        obs = mc.read_obs_from_file(
-            f'{test_fits2caom2_augmentation.TEST_DATA_DIR}/previews/{key}'
-        )
+        obs = mc.read_obs_from_file(f'{test_data_dir}/casda/{key}')
         for f_name in value:
-            test_name = dao_name.DAOName(f_name)
+            test_name = main_app.PossumName(f'{TEST_FILES_DIR}/{f_name}')
             kwargs['storage_name'] = test_name
 
             try:
-                ignore = preview_augmentation.visit(obs, **kwargs)
-                f_name_list = [test_name.prev_uri, test_name.thumb_uri]
-                for p in f_name_list:
-                    artifact = obs.planes[test_name.product_id].artifacts[p]
-                    # assert artifact.content_checksum.uri ==
-                    # test_checksums[p], \
-                    #     f'wrong checksum {p} {artifact.content_checksum} ' \
-                    #     f'{test_checksums[p]}'
+                obs = preview_augmentation.visit(obs, **kwargs)
+                uris = [test_name.prev_uri, test_name.thumb_uri]
+
+                for uri in uris:
+                    # this will fail if the preview and thumbnail artifacts have not been added to the observation
+                    artifact = obs.planes[test_name.product_id].artifacts[uri]
             except Exception as e:
                 assert False, f'key {key} value {value} f_name {f_name} {str(e)}'
-    # assert False

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -68,7 +67,7 @@
 #
 
 """
-Implements the default entry point functions for the workflow 
+Implements the default entry point functions for the workflow
 application.
 
 'run' executes based on either provided lists of work, or files on disk.
@@ -85,12 +84,12 @@ from caom2pipe.manage_composable import Config
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.run_composable import run_by_state, run_by_todo
 from caom2pipe.transfer_composable import VoScienceTransfer
-from possum2caom2 import fits2caom2_augmentation, main_app
+from possum2caom2 import fits2caom2_augmentation, main_app, preview_augmentation
 from vos import Client
 
 
 META_VISITORS = [fits2caom2_augmentation]
-DATA_VISITORS = []
+DATA_VISITORS = [preview_augmentation]
 
 
 def _run():
@@ -132,8 +131,7 @@ def run():
 
 
 def _run_incremental():
-    """Uses a state file with a timestamp to identify the work to be done.
-    """
+    """Uses a state file with a timestamp to identify the work to be done."""
     config = Config()
     config.get_executors()
     data_source = ListDirTimeBoxDataSource(config)

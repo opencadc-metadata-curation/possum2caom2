@@ -76,12 +76,12 @@ def pytest_generate_tests(metafunc):
     test_data_dir = f'{metafunc.config.invocation_dir}/data'
     obs_id_list = glob(f'{test_data_dir}/**/*.fits.header')
     metafunc.parametrize('test_name', obs_id_list)
-    
+
 
 def test_storage_name(test_config, test_name):
     test_obs_ids = [
-        '1368MHz_18asec_2031-5249_11073_pilot1', 
-        '1367MHz_18asec_2013-5553_11261_pilot1', 
+        '1368MHz_18asec_2031-5249_11073_pilot1',
+        '1367MHz_18asec_2013-5553_11261_pilot1',
         '944MHz_18asec_2226-5552_11268_pilot1',
     ]
     test_f_name = basename(test_name)
@@ -96,24 +96,31 @@ def test_storage_name(test_config, test_name):
         test_subject = PossumName(entry)
         assert test_subject.obs_id in test_obs_ids, f'wrong obs id {test_f_name} {test_subject}'
         assert test_subject.source_names == [entry], f'wrong source names {test_f_name}'
-        casda = False
         if 'p3d' in entry:
             assert test_subject.product_id == '3d_pipeline', f'wrong product id {test_subject.product_id}'
         elif 'p1d' in entry:
             assert test_subject.product_id == '1d_pipeline', f'wrong product id {test_subject.product_id}'
         else:
-            if '_t0_' in entry or '_t1_' in entry:
+            if '_t0_' in entry:
                 assert (
-                    test_subject.product_id == 'single_channel_taylor'
+                    test_subject.product_id == 'multifrequencysynthesis_i_t0'
                 ), f'wrong product id {test_subject.product_id}'
-                casda = True
+            elif '_t1_' in entry:
+                assert (
+                    test_subject.product_id == 'multifrequencysynthesis_i_t1'
+                ), f'wrong product id {test_subject.product_id}'
             elif '_i_' in entry:
                 assert test_subject.product_id == 'raw_i', f'wrong product id {test_subject.product_id}'
-                casda = True
             else:
                 assert test_subject.product_id == 'raw_qu', f'wrong product id {test_subject.product_id}'
-                casda = True
-        check_scheme = test_config.scheme if casda else test_config.preview_scheme
-        test_check_uri = f'{check_scheme}:{test_config.collection}/{test_f_name.replace(".header", "")}'
+        test_check_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name.replace(".header", "")}'
         assert test_subject.file_uri == test_check_uri, f'wrong file uri {test_subject}'
         assert test_subject.destination_uris == [test_check_uri], f'wrong uris {test_subject}'
+        assert test_subject.prev == f'{test_subject.obs_id}_{test_subject.product_id}_prev.jpg', 'preview uri'
+        assert test_subject.thumb == f'{test_subject.obs_id}_{test_subject.product_id}_prev_256.jpg', 'thumbnail uri'
+        assert (
+            test_subject.prev_uri == f'{test_config.preview_scheme}:{test_config.collection}/{test_subject.prev}'
+        ), 'preview uri'
+        assert (
+            test_subject.thumb_uri == f'{test_config.preview_scheme}:{test_config.collection}/{test_subject.thumb}'
+        ), 'thumbnail uri'

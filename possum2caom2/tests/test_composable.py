@@ -76,9 +76,9 @@ from caom2pipe.manage_composable import Config, State, StorageName
 from possum2caom2.main_app import PossumName
 from possum2caom2 import composable
 
+
 @patch(
-    'caom2pipe.data_source_composable.ListDirTimeBoxDataSource.'
-    'get_time_box_work',
+    'caom2pipe.data_source_composable.ListDirTimeBoxDataSource.' 'get_time_box_work',
     autospec=True,
 )
 @patch(
@@ -115,9 +115,9 @@ def test_run_by_state(clients_mock, do_one_mock, end_time_mock, get_work_mock, t
         args, kwargs = do_one_mock.call_args
         test_storage = args[0]
         assert isinstance(test_storage, PossumName), type(test_storage)
-        assert (test_storage.obs_id == test_obs_id), f'wrong obs id {test_storage.obs_id}'
+        assert test_storage.obs_id == test_obs_id, f'wrong obs id {test_storage.obs_id}'
         assert test_storage.file_name == test_f_name, 'wrong file name'
-        assert (test_storage.file_uri == f'{test_config.scheme}:{test_config.collection}/{test_f_name}'), 'wrong uri'
+        assert test_storage.file_uri == f'{test_config.scheme}:{test_config.collection}/{test_f_name}', 'wrong uri'
     finally:
         os.chdir(orig_cwd)
 

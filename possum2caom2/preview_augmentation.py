@@ -200,9 +200,9 @@ class PossumPreview(PreviewVisitor):
         """
         Pdata = np.squeeze(np.sqrt(Qdata**2 + Udata**2))
         if mode == 'mean':
-            data = np.mean(Pdata, axis=0)
+            data = np.nanmean(Pdata, axis=0)
         elif mode == 'maximum':
-            data = np.max(Pdata, axis=0)
+            data = np.nanmax(Pdata, axis=0)
         else:
             raise Exception('Invalid collapse mode specified. Only "mean" and "maximum" supported.')
 

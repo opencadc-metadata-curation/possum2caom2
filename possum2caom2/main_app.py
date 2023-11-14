@@ -312,6 +312,13 @@ class Possum1DMapping(cc.TelescopeMapping):
                         and chunk.polarization is None
                         and chunk.position is None
                         and chunk.time is None
+                    ) or (  # handle the Taylor BINTABLE extension case
+                        chunk.custom is None
+                        and chunk.energy is None
+                        and chunk.observable is None
+                        and chunk.polarization is None
+                        and chunk.position is None
+                        and chunk.time is not None
                     ):
                         delete_these.append(part.name)
                         break
@@ -442,9 +449,11 @@ class TaylorMapping(InputTileMapping):
         origin = self._headers[ext].get('ORIGIN')
         result = None
         if origin:
+            result = origin
             bits = origin.split(' ')
-            other_bits = bits[2].split(':')
-            result = f'{bits[0]} {other_bits[0]}'
+            if len(bits) > 3:
+                other_bits = bits[2].split(':')
+                result = f'{bits[0]} {other_bits[0]}'
         return result
 
     def _get_plane_provenance_version(self, ext):
@@ -452,8 +461,9 @@ class TaylorMapping(InputTileMapping):
         result = None
         if origin:
             bits = origin.split(' ')
-            other_bits = bits[2].split(':')
-            result = f'{bits[1]} {other_bits[1]}'
+            if len(bits) > 3:
+                other_bits = bits[2].split(':')
+                result = f'{bits[1]} {other_bits[1]}'
         return result
 
     def _get_time_function_refcoord_val(self, ext):

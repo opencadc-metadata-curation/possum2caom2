@@ -14,97 +14,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import astropy.io.fits as pf
 from astropy.nddata import block_reduce
-import argparse
 import re
 import os
-import glob
 
 from caom2 import ProductType, ReleaseType
 from caom2pipe.manage_composable import PreviewVisitor
-
-# def command_line():
-#     """Function for calling from the command line. Takes input directory, optional
-#     output filename or overwrite order.
-#     """
-
-#     descStr = """Create thumbnail and preview images for a specified FITS file
-#     or directory.
-#     """
-
-#     parser = argparse.ArgumentParser(description=descStr,
-#                                  formatter_class=argparse.RawTextHelpFormatter)
-#     parser.add_argument("filename",metavar="FITS_file",
-#                         help="Input FITS file or directory.")
-#     args = parser.parse_args()
-
-#     if os.path.isfile(args.filename):
-#         create_thumbnail_and_preview(args.filename)
-#     elif os.path.isdir(args.filename):
-#         files=glob.glob(os.path.join(args.filename,'*.fits'))
-#         for file in files:
-#             create_thumbnail_and_preview(file)
-
-
-def create_thumbnail_and_preview(filename):
-    """Create a 1024x1024 preview and 256x256 thumbnail image of the supplied
-    FITS file. Assumes input file is a 2048x2048 POSSUM tile.
-    If the file is part of a Stokes Q/U or real/imaginary pair,
-    the previous image is of polarized intensity.
-    If the file is a cube, it is collapsed along the third axis.
-    """
-    # Get data and header:
-    data = pf.getdata(filename)
-
-    # Check if image is part of a Q,U pair:
-    m1 = re.search('_[qu]_', filename)
-    m2 = re.search('_real_|_im_', filename)
-    # If so, grab other file and generate polarized intensity thumbnail
-    if m1 is not None:
-        if m1[0] == '_q_':
-            data_alt = pf.getdata(filename.replace('_q_', '_u_'))
-        elif m1[0] == '_u_':
-            data_alt = pf.getdata(filename.replace('_u_', '_q_'))
-
-        data = collapse_qu_cubes(data, data_alt, mode='mean')
-
-    if m2 is not None:
-        if m2[0] == '_real_':
-            data_alt = pf.getdata(filename.replace('_real_', '_im_'))
-        elif m2[0] == '_im_':
-            data_alt = pf.getdata(filename.replace('_im_', '_real_'))
-
-        data = collapse_qu_cubes(data, data_alt, mode='maximum')
-
-    # If data is still 3D (i.e., a cube that isn't part of a Q,U pair), collapse
-    # the 3rd dimension.
-    data = np.squeeze(data)
-    if data.ndim == 3:
-        data = np.nanmean(data, axis=0)
-
-    outfile = filename.replace('.fits', '_preview.jpg')
-    array_to_jpeg(data, outfile, downscale_factor=2)
-
-    outfile = filename.replace('.fits', '_thumbnail.jpg')
-    array_to_jpeg(data, outfile, downscale_factor=8)
-
-
-# def collapse_qu_cubes(Qdata,Udata,mode='mean'):
-#         """Converts Q and U into polarized intensity, then collapses along the
-#         third axis. Two collapse modes are supported: 'mean' and 'maximum'.
-#         The mean mode does no correction for polarization bias, so it'll end
-#         up with a positive bias (which should hopefully go away when converting
-#         data values to colors).
-#         Assumes input data is in FITS axis ordering (frequency/Faraday depth first).
-#         """
-#         Pdata = np.squeeze(np.sqrt(Qdata**2+Udata**2))
-#         if mode == 'mean':
-#             data=np.mean(Pdata,axis=0)
-#         elif mode == 'maximum':
-#             data=np.max(Pdata,axis=0)
-#         else:
-#             raise Exception('Invalid collapse mode specified. Only "mean" and "maximum" supported.')
-
-#         return data
 
 
 class PossumPreview(PreviewVisitor):
@@ -129,18 +43,23 @@ class PossumPreview(PreviewVisitor):
         # If so, grab other file and generate polarized intensity thumbnail
         if m1 is not None:
             if m1[0] == '_q_':
-                data_alt = pf.getdata(self._science_fqn.replace('_q_', '_u_'))
+                pair_file = self._science_fqn.replace('_q_', '_u_')
+                self._get_pair_file(pair_file, self.storage_name.file_uri.replace('_q_', '_u_'))
             elif m1[0] == '_u_':
-                data_alt = pf.getdata(self._science_fqn.replace('_u_', '_q_'))
+                pair_file = self._science_fqn.replace('_u_', '_q_')
+                self._get_pair_file(pair_file, self.storage_name.file_uri.replace('_u_', '_q_'))
+            data_alt = pf.getdata(pair_file)
 
             data = self._collapse_qu_cubes(data, data_alt, mode='mean')
 
         if m2 is not None:
             if m2[0] == '_real_':
-                data_alt = pf.getdata(self._science_fqn.replace('_real_', '_im_'))
+                pair_file = self._science_fqn.replace('_real_', '_im_')
+                self._get_pair_file(pair_file, self.storage_name.file_uri.replace('_real_', '_im_'))
             elif m2[0] == '_im_':
-                data_alt = pf.getdata(self._science_fqn.replace('_im_', '_real_'))
-
+                pair_file = self._science_fqn.replace('_im_', '_real_')
+                self._get_pair_file(pair_file, self.storage_name.file_uri.replace('_im_', '_real_'))
+            data_alt = pf.getdata(pair_file)
             data = self._collapse_qu_cubes(data, data_alt, mode='maximum')
 
         # If data is still 3D (i.e., a cube that isn't part of a Q,U pair), collapse
@@ -207,6 +126,10 @@ class PossumPreview(PreviewVisitor):
             raise Exception('Invalid collapse mode specified. Only "mean" and "maximum" supported.')
 
         return data
+
+    def _get_pair_file(self, pair_fqn, pair_uri):
+        if not os.path.exists(pair_fqn):
+            self._clients.data_client.get(os.path.dirname(pair_fqn), pair_uri)
 
 
 def visit(observation, **kwargs):

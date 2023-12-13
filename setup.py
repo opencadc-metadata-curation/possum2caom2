@@ -88,7 +88,7 @@ setup(
     use_2to3=False,
     setup_requires=[],
     entry_points=entry_points,
-    python_requires='>=3.11.*',
+    python_requires='>=3.12',
     packages=find_packages(),
     package_data={PACKAGENAME: ['data/*']},
     data_files=[('.config', ['config/config.yml', 'config/state.yml'])],
@@ -96,7 +96,7 @@ setup(
         'Natural Language :: English',
         'License :: OSI Approved :: GNU Affero General Public License v3',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
     cmdclass={
         'coverage': PyTest,

@@ -66,6 +66,7 @@
 #
 
 
+from caom2utils.parsers import BlueprintParser
 from caom2pipe import caom_composable as cc
 from possum2caom2.main_app import mapping_factory
 
@@ -77,16 +78,10 @@ class PossumFits2caom2Visitor(cc.Fits2caom2Visitor):
     def __init__(self, observation, **kwargs):
         super().__init__(observation, **kwargs)
 
-    def _get_mapping(self, headers):
-        return mapping_factory(self._storage_name, headers, self._clients, self._observable, self._observation)
-
-    def _get_parser(self, headers, blueprint, uri):
-        if self._storage_name.is_1d_output:
-            parser = BlueprintParser(blueprint, uri)
-            self._logger.debug(f'Using a BlueprintParser for BINTABLE {self._storage_name.file_uri}')
-        else:
-            parser = super()._get_parser(headers, blueprint, uri)
-        return parser
+    def _get_mapping(self, headers, _):
+        return mapping_factory(
+            self._storage_name, headers, self._clients, self._observable, self._observation, self._config
+        )
 
 
 def visit(observation, **kwargs):

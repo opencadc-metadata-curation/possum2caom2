@@ -1,4 +1,3 @@
-# ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
@@ -67,7 +66,6 @@
 #
 
 
-from caom2utils.caom2blueprint import BlueprintParser
 from caom2pipe import caom_composable as cc
 from possum2caom2.main_app import mapping_factory
 

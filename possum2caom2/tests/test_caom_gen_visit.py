@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2022.                            (c) 2022.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -66,44 +66,63 @@
 # ***********************************************************************
 #
 
-from os import chdir
-from os.path import dirname, join, realpath
-from caom2pipe.manage_composable import Config, StorageName
-import pytest
+from mock import patch
+
+from possum2caom2 import fits2caom2_augmentation, main_app
+from caom2.diff import get_differences
+from caom2pipe import astro_composable as ac
+from caom2pipe import manage_composable as mc
+from caom2pipe import reader_composable as rdc
+
+import glob
+import logging
+import os
+import helpers
 
 
-COLLECTION = 'POSSUM'
-# Séverin Gaudet - 08-11-23 - files only archived at CADC, scheme is 'cadc'
-SCHEME = 'cadc'
-PREVIEW_SCHEME = 'cadc'
+def pytest_generate_tests(metafunc):
+    test_data_dir = f'{metafunc.config.invocation_dir}/data'
+    obs_id_list = glob.glob(f'{test_data_dir}/**/*.fits.header')
+    metafunc.parametrize('test_name', obs_id_list)
 
 
-@pytest.fixture()
-def test_config():
-    config = Config()
-    config.collection = COLLECTION
-    config.preview_scheme = PREVIEW_SCHEME
-    config.scheme = SCHEME
-    config.logging_level = 'INFO'
-    config.meta_read_groups = [
-        'ivo://cadc.nrc.ca/gms?CADC',
-        'ivo://cadc.nrc.ca/gms?POSSUM-RW',
-        'ivo://cadc.nrc.ca/gms?POSSUM_Members',
-    ]
-    config.data_read_groups = config.meta_read_groups
-    StorageName.collection = config.collection
-    StorageName.preview_scheme = config.preview_scheme
-    StorageName.scheme = config.scheme
-    return config
+@patch('caom2utils.data_util.get_local_headers_from_fits')
+def test_main_app(header_mock, test_data_dir, test_config, test_name):
+    # logging.getLogger('root').setLevel(logging.DEBUG)
+    header_mock.side_effect = ac.make_headers_from_file
+    storage_name = main_app.PossumName(entry=test_name)
+    metadata_reader = rdc.FileMetadataReader()
+    metadata_reader.set(storage_name)
+    file_type = 'application/fits'
+    metadata_reader.file_info[storage_name.file_uri].file_type = file_type
+    kwargs = {
+        'storage_name': storage_name,
+        'metadata_reader': metadata_reader,
+        'config': test_config,
+    }
+    expected_fqn = f'{test_name.replace(".fits.header", "")}.expected.xml'
+    in_fqn = expected_fqn.replace('.expected', '.in')
+    actual_fqn = expected_fqn.replace('expected', 'actual')
+    if os.path.exists(actual_fqn):
+        os.unlink(actual_fqn)
+    observation = None
+    if os.path.exists(in_fqn):
+        observation = mc.read_obs_from_file(in_fqn)
+    observation = fits2caom2_augmentation.visit(observation, **kwargs)
 
-
-@pytest.fixture()
-def test_data_dir():
-    this_dir = dirname(realpath(__file__))
-    fqn = join(this_dir, 'data')
-    return fqn
-
-
-@pytest.fixture()
-def change_test_dir(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    if observation is None:
+        assert False, f'Did not create observation for {test_name}'
+    else:
+        if os.path.exists(expected_fqn):
+            expected = mc.read_obs_from_file(expected_fqn)
+            helpers.set_release_date_values(observation)
+            compare_result = get_differences(expected, observation)
+            if compare_result is not None:
+                mc.write_obs_to_file(observation, actual_fqn)
+                compare_text = '\n'.join([r for r in compare_result])
+                msg = f'Differences found in observation {expected.observation_id}\n{compare_text}'
+                raise AssertionError(msg)
+        else:
+            mc.write_obs_to_file(observation, actual_fqn)
+            assert False, f'nothing to compare to for {test_name}'
+    # assert False  # cause I want to see logging messages

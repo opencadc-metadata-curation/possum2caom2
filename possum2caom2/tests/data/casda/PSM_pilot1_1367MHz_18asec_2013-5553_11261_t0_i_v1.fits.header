@@ -1,0 +1,87 @@
+# HDU 0 in PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits:
+SIMPLE  =                    T /Standard FITS                                   
+BITPIX  =                  -32 /Floating point (32 bit)                         
+NAXIS   =                    4                                                  
+NAXIS1  =                 2048                                                  
+NAXIS2  =                 2048                                                  
+NAXIS3  =                    1                                                  
+NAXIS4  =                    1                                                  
+EXTEND  =                    T                                                  
+BSCALE  =   1.000000000000E+00 /PHYSICAL = PIXEL*BSCALE + BZERO                 
+BZERO   =   0.000000000000E+00                                                  
+BMAJ    =   5.000000000000E-03                                                  
+BMIN    =   5.000000000000E-03                                                  
+BPA     =   0.000000000000E+00                                                  
+BTYPE   = 'Intensity'                                                           
+OBJECT  = '        '                                                            
+BUNIT   = 'Jy/beam '           /Brightness (pixel) unit                         
+EQUINOX =   2.000000000000E+03                                                  
+RADESYS = 'FK5     '                                                            
+LONPOLE =   0.000000000000E+00                                                  
+LATPOLE =   9.000000000000E+01                                                  
+PC1_1   =   7.071067811865E-01                                                  
+PC2_1   =  -7.071067811865E-01                                                  
+PC3_1   =   0.000000000000E+00                                                  
+PC4_1   =   0.000000000000E+00                                                  
+PC1_2   =   7.071067811865E-01                                                  
+PC2_2   =   7.071067811865E-01                                                  
+PC3_2   =   0.000000000000E+00                                                  
+PC4_2   =   0.000000000000E+00                                                  
+PC1_3   =   0.000000000000E+00                                                  
+PC2_3   =   0.000000000000E+00                                                  
+PC3_3   =   1.000000000000E+00                                                  
+PC4_3   =   0.000000000000E+00                                                  
+PC1_4   =   0.000000000000E+00                                                  
+PC2_4   =   0.000000000000E+00                                                  
+PC3_4   =   0.000000000000E+00                                                  
+PC4_4   =   1.000000000000E+00                                                  
+CTYPE1  = 'RA---HPX'                                                            
+CRVAL1  =   0.000000000000E+00                                                  
+CDELT1  =  -9.710633743375E-04                                                  
+CRPIX1  =  -7.987000124666E+04                                                  
+CUNIT1  = 'deg     '                                                            
+CTYPE2  = 'DEC--HPX'                                                            
+CRVAL2  =   0.000000000000E+00                                                  
+CDELT2  =   9.710633743375E-04                                                  
+CRPIX2  =   4.098000080952E+03                                                  
+CUNIT2  = 'deg     '                                                            
+CTYPE3  = 'FREQ    '                                                            
+CRVAL3  =   1.367490740741E+09                                                  
+CDELT3  =   1.000000000000E+00                                                  
+CRPIX3  =   1.000000000000E+00                                                  
+CUNIT3  = 'Hz      '                                                            
+CTYPE4  = 'STOKES  '                                                            
+CRVAL4  =   1.000000000000E+00                                                  
+CDELT4  =   1.000000000000E+00                                                  
+CRPIX4  =   1.000000000000E+00                                                  
+CUNIT4  = '        '                                                            
+PV2_1   =   4.000000000000E+00                                                  
+PV2_2   =   3.000000000000E+00                                                  
+TELESCOP= 'ASKAP   '                                                            
+DATE-OBS= '2019-09-19T10:03:21.399999'                                          
+TIMESYS = 'UTC     '                                                            
+OBSGEO-X=  -2.558266717765E+06                                                  
+OBSGEO-Y=   5.095672176508E+06                                                  
+OBSGEO-Z=  -2.849020838078E+06                                                  
+PROJECT = 'AS103   '                                                            
+SBID    = '9945    '                                                            
+DURATION= '34448.3 '                                                            
+DATE    = '2023-05-12T04:44:25.170836' /Date FITS file was written              
+ORIGIN  = 'CASA 6.5.2-26 CASAtools:v1.0.0'                                      
+HISTORY Produced with ASKAPsoft version 1.0.11                                  
+HISTORY Processed with ASKAP pipeline version 1.0.11                            
+HISTORY Processed with ACES software revision 49040                             
+HISTORY Processed with ASKAP pipelines on 2020-06-27T09:35:57                   
+HISTORY Processed with CASA version 5.6.1-8.el7                                 
+HISTORY Replace NaN with zero                                                   
+HISTORY CASA START LOGTABLE                                                     
+HISTORY 2023-05-12T04:44:25 INFO SRCCODE='::imregrid'                           
+HISTORY version: 6.5.2-26 CASAtools:v1.0.0                                      
+HISTORY 2023-05-12T04:44:25 INFO SRCCODE='::imregrid'                           
+HISTORY imregrid(imagename="/mnt/shared/possum/data/MFS/image.i.SB9945.cont.tayl
+HISTORY >or.0.restored.zeros.sm.fits", template=..., output="/mnt/shared/possum/
+HISTORY >ata/corrected//components/i/2032-54/image.i.SB9945.cont.taylor.0.restor
+HISTORY >d.zeros.sm_2032-54-11261.image", asvelocity=True, axes=[0, 1], shape=[2
+HISTORY >48 2048    1    1], interpolation="cubic", decimate=10, replicate=False
+HISTORY > overwrite=True)                                                       
+HISTORY CASA END LOGTABLE                                                       

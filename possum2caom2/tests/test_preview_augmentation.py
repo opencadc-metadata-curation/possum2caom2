@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2022.                            (c) 2022.
+#  (c) 2023.                            (c) 2023.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -64,46 +64,43 @@
 #  $Revision: 4 $
 #
 # ***********************************************************************
-#
 
-from os import chdir
-from os.path import dirname, join, realpath
-from caom2pipe.manage_composable import Config, StorageName
-import pytest
+import glob
+import os
 
-
-COLLECTION = 'POSSUM'
-# Séverin Gaudet - 08-11-23 - files only archived at CADC, scheme is 'cadc'
-SCHEME = 'cadc'
-PREVIEW_SCHEME = 'cadc'
+from caom2pipe import manage_composable as mc
+from possum2caom2 import main_app, preview_augmentation
 
 
-@pytest.fixture()
-def test_config():
-    config = Config()
-    config.collection = COLLECTION
-    config.preview_scheme = PREVIEW_SCHEME
-    config.scheme = SCHEME
-    config.logging_level = 'INFO'
-    config.meta_read_groups = [
-        'ivo://cadc.nrc.ca/gms?CADC',
-        'ivo://cadc.nrc.ca/gms?POSSUM-RW',
-        'ivo://cadc.nrc.ca/gms?POSSUM_Members',
-    ]
-    config.data_read_groups = config.meta_read_groups
-    StorageName.collection = config.collection
-    StorageName.preview_scheme = config.preview_scheme
-    StorageName.scheme = config.scheme
-    return config
+TEST_FILES_DIR = '/test_files'
 
 
-@pytest.fixture()
-def test_data_dir():
-    this_dir = dirname(realpath(__file__))
-    fqn = join(this_dir, 'data')
-    return fqn
+def test_visit(test_data_dir, test_config, tmp_path):
+    # this should result in two new artifacts being added to every plane:
+    # one thumbnail, one preview
 
+    test_files = {
+        'PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.expected.xml': [
+            'PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits',
+        ],
+    }
 
-@pytest.fixture()
-def change_test_dir(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    kwargs = {
+        'working_directory': tmp_path.as_posix(),
+    }
+
+    for key, value in test_files.items():
+        obs = mc.read_obs_from_file(f'{test_data_dir}/casda/{key}')
+        for f_name in value:
+            test_name = main_app.PossumName(f'{TEST_FILES_DIR}/{f_name}')
+            kwargs['storage_name'] = test_name
+
+            try:
+                obs = preview_augmentation.visit(obs, **kwargs)
+                uris = [test_name.prev_uri, test_name.thumb_uri]
+
+                for uri in uris:
+                    # this will fail if the preview and thumbnail artifacts have not been added to the observation
+                    artifact = obs.planes[test_name.product_id].artifacts[uri]
+            except Exception as e:
+                assert False, f'key {key} value {value} f_name {f_name} {str(e)}'

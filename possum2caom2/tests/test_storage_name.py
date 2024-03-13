@@ -84,6 +84,7 @@ def test_storage_name(test_config, test_name):
         '1367MHz_18asec_2013-5553_11261_pilot1',
         '944MHz_18asec_2226-5552_11268_pilot1',
         '1367MHz_18asec_2039-5115_10973_pilot1',
+        '1368MHz_18asec_2013-5552_11261_pilot1',
     ]
     test_f_name = basename(test_name)
     test_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name.replace(".header", "")}'

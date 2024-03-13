@@ -229,8 +229,7 @@ class Possum1DMapping(cc.TelescopeMapping):
         self._1_year_after = datetime.now() + timedelta(days=365)
 
     def accumulate_blueprint(self, bp):
-        """Configure the telescope-specific ObsBlueprint at the CAOM model
-        Observation level."""
+        """Configure the telescope-specific ObsBlueprint at the CAOM model Observation level."""
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
         # JW - 17-10-23 - Use ASKAP
@@ -245,6 +244,7 @@ class Possum1DMapping(cc.TelescopeMapping):
         bp.set('Plane.dataProductType', '_get_data_product_type()')
         bp.set('Plane.metaRelease', self._1_year_after)
         bp.set('Plane.dataRelease', self._1_year_after)
+        bp.set('Plane.provenance.reference', 'https://askap.org/possum/')
         bp.set('Artifact.productType', ProductType.SCIENCE)
         bp.set('Artifact.releaseType', ReleaseType.DATA)
         self._logger.debug('Done accumulate_bp.')
@@ -479,7 +479,7 @@ class TaylorMapping(InputTileMapping):
                     chunk.time_axis = None
 
 
-class OutputSpatialTemporal(Possum1DMapping):
+class OutputSpatial(Possum1DMapping):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -502,12 +502,6 @@ class OutputSpatialTemporal(Possum1DMapping):
         bp.add_attribute('Chunk.position.axis.function.cd22', 'CDELT2')
         bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
-        bp.configure_time_axis(5)
-        bp.set('Chunk.time.axis.axis.ctype', 'TIME')
-        bp.set('Chunk.time.axis.axis.cunit', 'd')
-        bp.set('Chunk.time.axis.function.naxis', 1)
-        bp.set('Chunk.time.axis.function.refCoord.pix', 0.5)
-
         self._logger.debug('Done accumulate_bp.')
 
     def update(self, file_info):
@@ -521,23 +515,12 @@ class OutputSpatialTemporal(Possum1DMapping):
                     continue
                 for part in artifact.parts.values():
                     for chunk in part.chunks:
-                        if chunk.time is not None:
-                            chunk.time_axis = None
-                            if (
-                                chunk.time.axis is not None
-                                and chunk.time.axis.function is not None
-                                and chunk.time.axis.function.ref_coord is not None
-                            ):
-                                # because the CD matrix is present, but not correctly for TIME (index 5)
-                                chunk.time.axis.function.ref_coord.val = make_datetime(
-                                    self._headers[0].get('DATE-OBS')
-                                ).timestamp()
                         if chunk.energy is not None:
                             chunk.energy_axis = None
         return self._observation
 
 
-class Output3DMapping(OutputSpatialTemporal):
+class Output3DMapping(OutputSpatial):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -549,7 +532,8 @@ class Output3DMapping(OutputSpatialTemporal):
         bp.configure_custom_axis(4)
         self._logger.debug('Done accumulate_bp.')
 
-class OutputFWHM(OutputSpatialTemporal):
+
+class OutputCustomSpatial(OutputSpatial):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -558,18 +542,71 @@ class OutputFWHM(OutputSpatialTemporal):
         Observation level."""
         super().accumulate_blueprint(bp)
         bp.configure_custom_axis(3)
+        self._logger.debug('Done accumulate_bp.')
+
+
+class OutputFWHM(OutputCustomSpatial):
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+
+    def accumulate_blueprint(self, bp):
+        """Configure the telescope-specific ObsBlueprint at the CAOM model
+        Observation level."""
+        super().accumulate_blueprint(bp)
         bp.configure_polarization_axis(4)
         self._logger.debug('Done accumulate_bp.')
 
 
+class Possum1DBINTABLE(Possum1DMapping):
+
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+
+    def accumulate_blueprint(self, bp):
+        super().accumulate_blueprint(bp)
+        bp.configure_position_axes((1, 2))
+        extension = 1
+        # hard-coded values from
+        # POSSUM PIPELINE: Inputs and Outputs, Version 1.2, January 20, 2023
+        bp.set('Chunk.position.axis.axis1.ctype', 'RA---HPX')
+        # deg
+        bp.add_table_attribute('Chunk.position.axis.axis1.cunit', 'TUNIT3', extension)
+        bp.set('Chunk.position.axis.axis2.ctype', 'DEC--HPX')
+        # deg
+        bp.add_table_attribute('Chunk.position.axis.axis2.cunit', 'TUNIT4', extension)
+        bp.set('Chunk.position.axis.function.dimension.naxis1', 1)
+        bp.set('Chunk.position.axis.function.dimension.naxis2', 1)
+        bp.set('Chunk.position.axis.function.refCoord.coord1.pix', 1.0)
+        # ra
+        bp.add_table_attribute('Chunk.position.axis.function.refCoord.coord1.val', 'TTYPE2', extension)
+        bp.set('Chunk.position.axis.function.refCoord.coord2.pix', 1.0)
+        # dec
+        bp.add_table_attribute('Chunk.position.axis.function.refCoord.coord2.val', 'TTYPE3', extension)
+
+
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
     if storage_name.product_id == '1d_pipeline':
-        result = Possum1DMapping(storage_name, headers, clients, observable, observation, config)
-    elif storage_name.product_id == '3d_pipeline':
-        if '_FWHM' in storage_name.file_name:
-            result = OutputFWHM(storage_name, headers, clients, observable, observation, config)
+        if '_spectra' in storage_name.file_name:
+            result = Possum1DBINTABLE(storage_name, headers, clients, observable, observation, config)
         else:
-            result = Output3DMapping(storage_name, headers, clients, observable, observation, config)
+            result = Possum1DMapping(storage_name, headers, clients, observable, observation, config)
+    elif storage_name.product_id == '3d_pipeline':
+        naxis = None
+        if headers and len(headers) > 0:
+            naxis = headers[0].get('NAXIS')
+        if '_FWHM' in storage_name.file_name:
+            if naxis:
+                if naxis == 3:
+                    result = OutputCustomSpatial(storage_name, headers, clients, observable, observation, config)
+                elif naxis == 4:
+                    result = OutputFWHM(storage_name, headers, clients, observable, observation, config)
+                else:
+                    raise CadcException(f'No mapping for {storage_name.file_name}.')
+        else:
+            if naxis and naxis == 2:
+                result = OutputSpatial(storage_name, headers, clients, observable, observation, config)
+            else:
+                result = Output3DMapping(storage_name, headers, clients, observable, observation, config)
     elif storage_name.product_id.startswith('multifrequencysynthesis_'):
         result = TaylorMapping(storage_name, headers, clients, observable, observation, config)
     else:

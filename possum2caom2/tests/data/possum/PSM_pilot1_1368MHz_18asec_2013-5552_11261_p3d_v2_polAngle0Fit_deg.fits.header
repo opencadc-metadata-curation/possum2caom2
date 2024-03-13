@@ -1,0 +1,66 @@
+visit
+# HDU 0 in PSM_pilot1_1368MHz_18asec_2013-5552_11261_p3d_v2_polAngle0Fit_deg.fits:
+SIMPLE  =                    T / conforms to FITS standard                      
+BITPIX  =                  -32 / array data type                                
+NAXIS   =                    2 / number of array dimensions                     
+NAXIS1  =                 2048                                                  
+NAXIS2  =                 2048                                                  
+BMAJ    =   5.000000000000E-03                                                  
+BMIN    =   5.000000000000E-03                                                  
+BPA     =   0.000000000000E+00                                                  
+BTYPE   = 'Intensity'                                                           
+OBJECT  = '        '                                                            
+BUNIT   = 'deg     '           / Brightness (pixel) unit                        
+EQUINOX =   2.000000000000E+03                                                  
+RADESYS = 'FK5     '                                                            
+LONPOLE =   0.000000000000E+00                                                  
+LATPOLE =   9.000000000000E+01                                                  
+PC1_1   =   7.071067811865E-01                                                  
+PC2_1   =  -7.071067811865E-01                                                  
+PC3_1   =   0.000000000000E+00                                                  
+PC4_1   =   0.000000000000E+00                                                  
+PC1_2   =   7.071067811865E-01                                                  
+PC2_2   =   7.071067811865E-01                                                  
+PC3_2   =   0.000000000000E+00                                                  
+PC4_2   =   0.000000000000E+00                                                  
+PC1_3   =   0.000000000000E+00                                                  
+PC2_3   =   0.000000000000E+00                                                  
+PC3_3   =   1.000000000000E+00                                                  
+PC4_3   =   0.000000000000E+00                                                  
+PC1_4   =   0.000000000000E+00                                                  
+PC2_4   =   0.000000000000E+00                                                  
+PC3_4   =   0.000000000000E+00                                                  
+PC4_4   =   1.000000000000E+00                                                  
+CTYPE1  = 'RA---HPX'                                                            
+CRVAL1  =   0.000000000000E+00                                                  
+CDELT1  =  -9.710633743375E-04                                                  
+CRPIX1  =  -7.987000124666E+04                                                  
+CUNIT1  = 'deg     '                                                            
+CTYPE2  = 'DEC--HPX'                                                            
+CRVAL2  =   0.000000000000E+00                                                  
+CDELT2  =   9.710633743375E-04                                                  
+CRPIX2  =   4.098000080952E+03                                                  
+CUNIT2  = 'deg     '                                                            
+PV2_1   =   4.000000000000E+00                                                  
+PV2_2   =   3.000000000000E+00                                                  
+RESTFRQ =   1.420405751786E+09 /Rest Frequency (Hz)                             
+SPECSYS = 'TOPOCENT'           /Spectral reference frame                        
+ALTRVAL =   2.625917413132E+07                                                  
+ALTRPIX =   1.000000000000E+00                                                  
+VELREF  =                  259 /1 LSR, 2 HEL, 3 OBS, +256 Radio                 
+COMMENT casacore non-standard usage: 4 LSD, 5 GEO, 6 SOU, 7 GAL                 
+DATE    = '2023-04-27T18:08:11.462760' /Date FITS file was written              
+TIMESYS = 'UTC     '           /Time system for HDU                             
+ORIGIN  = 'CASA 6.5.2-26 CASAtools:v1.0.0'                                      
+LAMSQ0  =  0.04809052342335257 / Lambda^2_0, in m^2                             
+HISTORY Corrected for ionospheric Faraday rotation using FRion.                 
+HISTORY CASA START LOGTABLE                                                     
+HISTORY 2023-04-27T18:08:11 INFO SRCCODE='::imregrid'                           
+HISTORY version: 6.5.2-26 CASAtools:v1.0.0                                      
+HISTORY 2023-04-27T18:08:11 INFO SRCCODE='::imregrid'                           
+HISTORY imregrid(imagename="/mnt/shared/possum/data/corrected/9945/split/q/split
+HISTORY >_0-47_q.fits", template=..., output="/mnt/shared/possum/data/corrected/
+HISTORY >components/q/2032-54/split_0-47_q_2032-54-11261.image", asvelocity=True
+HISTORY > axes=[0, 1], shape=[2048 2048    1   48], interpolation="cubic", decim
+HISTORY >te=10, replicate=False, overwrite=True)                                
+HISTORY CASA END LOGTABLE                                                       

@@ -68,7 +68,8 @@
 
 from mock import patch
 
-from possum2caom2 import fits2caom2_augmentation, main_app
+from possum2caom2.storage_name import PossumName
+from possum2caom2 import fits2caom2_augmentation
 from caom2.diff import get_differences
 from caom2pipe import astro_composable as ac
 from caom2pipe import manage_composable as mc
@@ -90,7 +91,7 @@ def pytest_generate_tests(metafunc):
 def test_main_app(header_mock, test_data_dir, test_config, test_name):
     # logging.getLogger('root').setLevel(logging.DEBUG)
     header_mock.side_effect = ac.make_headers_from_file
-    storage_name = main_app.PossumName(entry=test_name)
+    storage_name = PossumName(entry=test_name)
     metadata_reader = rdc.FileMetadataReader()
     metadata_reader.set(storage_name)
     file_type = 'application/fits'

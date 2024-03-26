@@ -85,6 +85,7 @@ from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.run_composable import run_by_state, run_by_todo
 from caom2pipe.transfer_composable import VoScienceTransfer
 from possum2caom2 import fits2caom2_augmentation, main_app, preview_augmentation
+from possum2caom2.possum_execute import remote_execution
 from vos import Client
 
 
@@ -149,6 +150,22 @@ def run_incremental():
     """Wraps _run_incremental in exception handling."""
     try:
         _run_incremental()
+        sys.exit(0)
+    except Exception as e:
+        logging.error(e)
+        tb = traceback.format_exc()
+        logging.debug(tb)
+        sys.exit(-1)
+
+
+def _run_remote():
+    return remote_execution()
+
+
+def run_remote():
+    """Wraps _run_remote in exception handling."""
+    try:
+        _run_remote()
         sys.exit(0)
     except Exception as e:
         logging.error(e)

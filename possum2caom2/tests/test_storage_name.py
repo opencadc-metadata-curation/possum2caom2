@@ -69,7 +69,7 @@
 from glob import glob
 from os.path import basename
 
-from possum2caom2 import PossumName
+from possum2caom2.storage_name import PossumName
 
 
 def pytest_generate_tests(metafunc):

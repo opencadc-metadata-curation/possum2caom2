@@ -73,7 +73,7 @@ from mock import patch, PropertyMock
 
 from caom2pipe.data_source_composable import StateRunnerMeta
 from caom2pipe.manage_composable import Config, State, StorageName
-from possum2caom2.main_app import PossumName
+from possum2caom2.storage_name import PossumName
 from possum2caom2 import composable
 
 

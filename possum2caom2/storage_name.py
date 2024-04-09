@@ -116,6 +116,8 @@ class PossumName(StorageName):
 
     def __init__(self, entry):
         super().__init__(file_name=basename(entry.replace('.header', '')), source_names=[entry])
+        # the renamed files in a list
+        self._stage_names = []
 
     @property
     def file_uri(self):
@@ -129,9 +131,30 @@ class PossumName(StorageName):
         return f'{self._obs_id}_{self._product_id}_prev.jpg'
 
     @property
+    def stage_names(self):
+        return self._stage_names
+
+    @property
     def thumb(self):
         """The thumbnail file name for the file."""
         return f'{self._obs_id}_{self._product_id}_prev_256.jpg'
+
+    def rename(self, band, version='v1', resolution='20asec'):
+        # Jennifer West, 08-04-24
+        # band1 == 944MHz, band2 == 1296MHz
+        # is version == v1
+        # resolution == 20asec
+        x = self._file_name.split('.fits')
+        bits = x[0].split('.')
+        temp1 = '_'.join(ii for ii in bits)
+        insert = f'PSM_{band}_{resolution}'
+        temp2 = temp1.replace('PSM', insert)
+        if len(x) == 1:
+            temp = f'{temp2}_{version}.fits'
+        else:
+            temp = f'{temp2}_{version}.fits{x[1]}'
+        self._stage_names.append(temp)
+        return temp
 
     def set_destination_uris(self):
         for entry in self._source_names:
@@ -160,15 +183,18 @@ class PossumName(StorageName):
     def set_product_id(self):
         bits = self._file_id.split('_')
         if len(bits) > 1:
+            index = 5
+            if 'pilot' in self._file_id:
+                index = 6
             if '_p3d_' in self._file_id:
                 self._product_id = '3d_pipeline'
             elif '_p1d_' in self._file_id:
                 self._product_id = '1d_pipeline'
-            elif bits[6] == 'i':
+            elif bits[index] == 'i':
                 self._product_id = 'raw_i'
-            elif bits[6] == 'q' or bits[6] == 'u':
+            elif bits[index] == 'q' or bits[index] == 'u':
                 self._product_id = 'raw_qu'
-            elif bits[6] == 't0' or bits[6] == 't1':
+            elif bits[index] == 't0' or bits[index] == 't1':
                 # Cameron Van Eck - 23-10-23
                 # “mfs_i_t0" or “multifrequencysynthesis_i_t0” for the image product ProductID
                 self._product_id = f'multifrequencysynthesis_{bits[7]}_{bits[6]}'
@@ -184,7 +210,6 @@ class PossumName(StorageName):
                 self._product_id = 'idk'
             else:
                 raise CadcException(f'Unexpected file naming pattern {self._file_id}')
-
 
     def _get_scheme(self):
         if self._product_id in ['raw_i', 'raw_qu'] or self._product_id.startswith('multifrequencysynthesis_'):

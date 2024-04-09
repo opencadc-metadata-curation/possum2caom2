@@ -70,16 +70,20 @@ import json
 import logging
 import os
 
+from astropy import units
+from copy import deepcopy
+
 from cadcdata.storageinv import FileInfo
-from caom2pipe.client_composable import ClientCollection
+from caom2pipe.client_composable import ClientCollection, repo_create, repo_get, repo_update
 from caom2pipe.data_source_composable import IncrementalDataSource, ListDirSeparateDataSource
 from caom2pipe.execute_composable import OrganizeExecutes
-from caom2pipe.manage_composable import Config, create_dir, exec_cmd, exec_cmd_info, ExecutionReporter, increment_time
-from caom2pipe.manage_composable import make_datetime, Observable, StorageName, TaskType
+from caom2pipe.manage_composable import CadcException, Config, compute_md5sum, create_dir, exec_cmd, exec_cmd_info
+from caom2pipe.manage_composable import ExecutionReporter, increment_time, make_datetime, Observable, StorageName, TaskType
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.reader_composable import FileMetadataReader
 from caom2pipe.run_composable import set_logging, StateRunner, TodoRunner
 from caom2pipe.transfer_composable import CadcTransfer, Transfer
+from caom2repo import CAOM2RepoClient
 from caom2utils.data_util import get_file_type
 from possum2caom2 import fits2caom2_augmentation, preview_augmentation
 from possum2caom2.storage_name import PossumName
@@ -100,12 +104,19 @@ class RCloneClients(ClientCollection):
 
     def __init__(self, config):
         super().__init__(config)
-        # TODO credentials
+        # TODO rclone credentials
         self._rclone_client = None
+        self._server_side_ctor_client = CAOM2RepoClient(
+            self._subject, self._config.logging_level, self._config.server_side_constructor_resource_id
+        )
 
     @property
     def rclone_client(self):
         return self._rclone_client
+
+    @property
+    def server_side_ctor_client(self):
+        return self._server_side_ctor_client
 
 
 class RemoteMetadataReader(FileMetadataReader):
@@ -136,13 +147,11 @@ class RemoteMetadataReader(FileMetadataReader):
         self._logger.debug(f'End get_time_box_work_parameters with count {count}')
         return count, max_time_box
 
+    def reset(self):
+        pass
+
     def set(self, storage_name):
-        self._logger.debug(f'Begin set for {storage_name.file_name}')
-        if isinstance(storage_name, StorageName):
-            self.set_headers(storage_name)
-        else:
-            raise NotImplementedError
-        self._logger.debug('End set')
+        raise NotImplementedError
 
     def set_file_info(self, storage_name):
         """
@@ -157,7 +166,7 @@ class RemoteMetadataReader(FileMetadataReader):
         components survey q
         components survey u
         components survey w
-        :param storage_name str JSON
+        :param storage_name str JSON output from rclone lsjson command
         """
         self._logger.debug('Begin set_file_info with rclone lsjson output')
         content = json.loads(storage_name)
@@ -165,21 +174,46 @@ class RemoteMetadataReader(FileMetadataReader):
             name = entry.get('Name')
             if name.startswith('PSM') and '.fits' in name:
                 # keys are destination URIs
-                storage_name = PossumName(name)
-                if storage_name.file_uri not in self._file_info:
-                    self._logger.debug(f'Retrieve FileInfo for {storage_name.file_uri}')
-                    self._file_info[storage_name.file_uri] = FileInfo(
-                        id=storage_name.file_uri,
+                possum_name = PossumName(name)
+                if possum_name.file_uri not in self._file_info:
+                    self._logger.debug(f'Retrieve FileInfo for {possum_name.file_uri}')
+                    self._file_info[possum_name.file_uri] = FileInfo(
+                        id=possum_name.file_uri,
                         file_type=get_file_type(name),
                         size=entry.get('Size'),
                         lastmod=make_datetime(entry.get('ModTime')),
                     )
                     if self._max_dt:
-                        self._max_dt = max(self._file_info[storage_name.file_uri].lastmod, self._max_dt)
+                        self._max_dt = max(self._file_info[possum_name.file_uri].lastmod, self._max_dt)
                     else:
-                        self._max_dt = self._file_info[storage_name.file_uri].lastmod
-                    self._storage_names[storage_name.file_uri] = storage_name
+                        self._max_dt = self._file_info[possum_name.file_uri].lastmod
+                    self._storage_names[possum_name.file_uri] = possum_name
         self._logger.debug('End set_file_info')
+
+    def set_headers(self, storage_name, working_directory):
+        self._logger.debug(f'Begin set_headers for {storage_name.file_name}')
+        for index, entry in enumerate(storage_name.destination_uris):
+            if entry not in self._headers:
+                self._logger.debug(f'Retrieve headers for {entry}')
+                self._retrieve_headers(entry, os.path.join(working_directory, os.path.basename(entry)))
+        self._logger.debug('End set_headers')
+
+
+class TodoMetadataReader(FileMetadataReader):
+    def __init__(self, remote_metadata_reader):
+        super().__init__()
+        self._remote_metadata_reader = remote_metadata_reader
+
+    def _retrieve_file_info(self, key, source_name):
+        for storage_name in self._remote_metadata_reader.storage_names.values():
+            for file_name in storage_name.stage_names:
+                if key.endswith(file_name):
+                    # the stage_names are the renamed values
+                    self._logger.debug(f'Found remote FileInfo entry for {file_name} in {storage_name.file_uri}')
+                    self._file_info[key] = self._remote_metadata_reader.file_info.get(storage_name.file_uri)
+                    # missing md5sum - TODO - maybe rclone can report this
+                    md5_sum = compute_md5sum(source_name)
+                    self._file_info[key].md5sum = f'md5:{md5_sum}'
 
 
 class RemoteIncrementalDataSource(IncrementalDataSource):
@@ -322,7 +356,7 @@ class ExecutionUnit:
         self._entry_dt = None
         self._clients = kwargs.get('clients')
         # self._data_source = kwargs.get('data_source')
-        self._metadata_reader = kwargs.get('metadata_reader')
+        self._remote_metadata_reader = kwargs.get('metadata_reader')
         self._observable = kwargs.get('observable')
         self._reporter = kwargs.get('reporter')
         self._prev_exec_dt = kwargs.get('prev_exec_dt')
@@ -339,6 +373,9 @@ class ExecutionUnit:
                 self._log_fqn = os.path.join(config.working_directory, self._label)
             self._logging_level = config.logging_level
         self._num_entries = None
+        self._central_wavelengths = {}  # key is original ObservationID, value is central wavelength
+        self._observations = {}  # key is original ObservationID, values are Observation instances
+        self._local_metadata_reader = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
@@ -368,28 +405,23 @@ class ExecutionUnit:
     def do(self):
         """Make the execution unit one time-boxed copy from the DataSource to staging space, followed by a TodoRunner
         pointed to the staging space, and using that staging space with use_local_files: True. """
-        self._logger.debug(f'Begin do for {self._num_entries} entries')
+        self._logger.info(f'Begin do for {self._num_entries} entries in {self._label}')
+        self._rename()
         result = None
         # set a Config instance to use the staging space with 'use_local_files: True'
-        todo_config = Config()
-        for attr in dir(self._config):
-            if attr.startswith('__') or attr in [
-                'bookmark', 'is_connected', 'report_fqn', 'time_zone', 'total_retry_fqn', 'use_vos'
-            ]:
-                continue
-            value = getattr(self._config, attr)
-            setattr(todo_config, attr, value)
+        todo_config = deepcopy(self._config)
         todo_config.use_local_files = True
         todo_config.data_sources = [self._working_directory]
         self._logger.debug(f'do config for TodoRunner: {todo_config}')
+        self._local_metadata_reader = TodoMetadataReader(self._remote_metadata_reader)
         organizer = OrganizeExecutes(
             todo_config,
             META_VISITORS,
             DATA_VISITORS,
-            None,
+            None,  # chooser
             Transfer(),
             CadcTransfer(self._clients.cadc_client),
-            self._metadata_reader,
+            self._local_metadata_reader,
             self._clients,
             self._observable,
             self._reporter,
@@ -397,13 +429,13 @@ class ExecutionUnit:
         local_data_source = ListDirSeparateDataSource(todo_config)
         local_data_source.reporter = self._reporter
         builder = EntryBuilder(PossumName)
-        # start a TodoRunner with the new Config instance and the new data_source
+        # start a TodoRunner with the new Config instance, data_source, and metadata_reader
         todo_runner = TodoRunner(
             todo_config,
             organizer,
             builder=builder,
             data_sources=[local_data_source],
-            metadata_reader=self._metadata_reader,
+            metadata_reader=self._local_metadata_reader,
             observable=self._observable,
             reporter=self._reporter,
         )
@@ -437,6 +469,99 @@ class ExecutionUnit:
             os.rmdir(self._working_directory)
             self._logger.debug(f'Removed working directory {self._working_directory} and contents.')
         self._logger.debug('End _clean_up_workspace')
+
+    def _rename(self):
+        """The files from Pawsey need to be renamed. Some of the metadata to rename the files is most easily found
+        in the plane-level metadata that is calculated server-side.
+
+        The sandbox POSSUM configuration calculates the plane-level metadata, but the production POSSUM configuration
+        does not.
+
+        The BINTABLE files require do not contain enough metadata to easily calculate plane-level metadata, so for
+        those files, that must be calculated by this application. The position bounding box will be the HEALpix
+        coordinates for n=32.
+        """
+        self._logger.debug('Begin _rename')
+        work = os.listdir(self._working_directory)
+        for file_name in work:
+            self._logger.info(f'Working on {file_name}')
+            found_storage_name = None
+            for storage_name in self._remote_metadata_reader.storage_names.values():
+                if storage_name.file_name == file_name:
+                    found_storage_name = storage_name
+                    break
+            self._remote_metadata_reader.set_headers(found_storage_name, self._working_directory)
+            found_observation = False
+            central_wavelength = self._central_wavelengths.get(found_storage_name.obs_id)
+            if not central_wavelength:
+                self._logger.info(f'Building a temp record for {found_storage_name.file_uri}')
+                # create a CAOM2 record
+                kwargs = {
+                    'working_directory': self._working_directory,
+                    'config': self._config,
+                    'clients': self._clients,
+                    'storage_name': found_storage_name,
+                    'metadata_reader': self._remote_metadata_reader,
+                    'observable': self._observable,
+                }
+                observation = repo_get(
+                    self._clients.server_side_ctor_client,
+                    found_storage_name.collection,
+                    found_storage_name.obs_id,
+                    self._observable.metrics,
+                )
+                if observation:
+                    found_observation = True
+                for visitor in META_VISITORS:
+                    observation = visitor.visit(observation, **kwargs)
+                if observation:
+                    # post it to sc2
+                    if found_observation:
+                        repo_update(
+                            self._clients.server_side_ctor_client,
+                            observation,
+                            self._observable.metrics,
+                        )
+                    else:
+                        repo_create(
+                            self._clients.server_side_ctor_client,
+                            observation,
+                            self._observable.metrics,
+                        )
+                    # read it back
+                    observation = repo_get(
+                        self._clients.server_side_ctor_client,
+                        found_storage_name.collection,
+                        found_storage_name.obs_id,
+                        self._observable.metrics,
+                    )
+                    # calculate central wavelength
+                    plane = observation.planes[found_storage_name.product_id]
+                    min_wavelength = (
+                        plane.energy.bounds.lower * units.meter
+                    ).to(units.MHz, equivalencies=units.spectral())
+                    max_wavelength = (
+                        plane.energy.bounds.upper * units.meter
+                    ).to(units.MHz, equivalencies=units.spectral())
+                    central = min_wavelength + ( min_wavelength - max_wavelength ) / 2
+                    central_wavelength = f'{round(central.value)}MHz'.strip()
+                    self._logger.info(
+                        f'Found central wavelength of {central_wavelength} for {found_storage_name.obs_id}'
+                    )
+                    self._central_wavelengths[found_storage_name.obs_id] = central_wavelength
+                    self._observations[found_storage_name.obs_id] = observation
+                    # keep the least amount of necessary metadata in memory
+                    while len(plane.artifacts) > 0:
+                        plane.artifacts.pop()
+                else:
+                    self._logger.error(f'No Observation for {found_storage_name.file_name}')
+            found_storage_name.rename(central_wavelength)
+            fqn = os.path.join(self._working_directory, found_storage_name.file_name)
+            renamed_fqn = os.path.join(self._working_directory, found_storage_name.stage_names[0])
+            os.rename(fqn, renamed_fqn)
+            self._logger.info(f'Renamed {fqn} to {renamed_fqn}.')
+            self._logger.debug(f'{found_storage_name.file_uri}')
+        self._logger.debug('End _rename')
 
     def _set_up_file_logging(self):
         """Configure logging to a separate file for each execution unit.

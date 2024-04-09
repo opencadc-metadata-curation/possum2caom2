@@ -69,95 +69,16 @@
 import logging
 
 from datetime import datetime
+from glob import glob
 from os import listdir
 from os.path import exists
 from shutil import copyfile
 
 from caom2utils.data_util import get_local_file_headers
-from possum2caom2 import possum_execute
-from caom2pipe.manage_composable import ExecutionReporter, make_datetime, Observable, State, TaskType
+from possum2caom2 import possum_execute, storage_name
+from caom2pipe.manage_composable import CadcException, ExecutionReporter, make_datetime, Observable, read_obs_from_file
+from caom2pipe.manage_composable import State, TaskType
 from mock import ANY, call, Mock, patch, PropertyMock
-
-
-# def test_choose_store(test_config):
-#     test_config.data_sources = ['rclone_remote']
-#     test_config.task_types = [TaskType.STORE]
-#     test_subject = RCloneOrganizeExecutes(
-#         test_config,
-#         meta_visitors=[],
-#         data_visitors=[],
-#         chooser=None,
-#         store_transfer=Mock(),
-#         modify_transfer=None,
-#         metadata_reader=None,
-#         clients=Mock(),
-#         observable=Mock(),
-#         reporter=Mock(),
-#     )
-#     test_subject.choose()
-#     assert len(test_subject._executors) == 1, 'length'
-#     assert isinstance(test_subject._executors[0], RCloneStore), 'type'
-
-
-# def test_choose_visit(test_config):
-#     test_config.data_sources = ['rclone_remote']
-#     test_config.task_types = [TaskType.STORE, TaskType.INGEST]
-#     test_subject = RCloneOrganizeExecutes(
-#         test_config,
-#         meta_visitors=[],
-#         data_visitors=[],
-#         chooser=None,
-#         store_transfer=Mock(),
-#         modify_transfer=None,
-#         metadata_reader=None,
-#         clients=Mock(),
-#         observable=Mock(),
-#         reporter=Mock(),
-#     )
-#     test_subject.choose()
-#     assert len(test_subject._executors) == 1, 'length'
-#     assert isinstance(test_subject._executors[0], RCloneNoFheadStoreVisit), 'type'
-
-
-# def test_rclone_store(test_config, tmp_path, change_test_dir):
-#     test_config.change_working_directory(tmp_path)
-#     test_config.data_sources = ['rclone_test']
-#     working_path = tmp_path.joinpath(test_config.data_sources[0])
-#     working_path.mkdir()
-#     test_observable = Mock()
-#     test_clients = Mock()
-#     test_metadata_reader = Mock()
-#     test_transferrer = Mock()
-
-#     test_subject = RCloneStore(test_config, test_observable, test_clients, test_metadata_reader, test_transferrer)
-#     test_subject.execute(None)
-#     assert test_observable.mock_calls == [], 'observable'
-#     assert test_clients.mock_calls == [], 'clients'
-#     assert test_metadata_reader.mock_calls == [], 'metadata_reader'
-#     assert test_transferrer.mock_calls == [call.get(None, f'{tmp_path}/{test_config.data_sources[0]}')], 'transferrer'
-
-
-# def test_rclone_visit(test_config):
-#     test_observable = Mock()
-#     test_clients = Mock()
-#     test_metadata_reader = Mock()
-#     test_transferrer = Mock()
-#     test_meta_visitors = []
-#     test_data_visitors = []
-#     test_subject = RCloneNoFheadStoreVisit(
-#         test_config,
-#         test_clients,
-#         test_transferrer,
-#         test_meta_visitors,
-#         test_data_visitors,
-#         test_metadata_reader,
-#         test_observable,
-#     )
-#     test_subject.execute(None)
-#     assert test_observable.mock_calls == [], 'observable'
-#     assert test_clients.mock_calls == [], 'clients'
-#     assert test_metadata_reader.mock_calls == [], 'metadata_reader'
-#     assert test_transferrer.mock_calls == [], 'transferrer'
 
 
 def test_execution_unit_start_stop(test_config, tmp_path):
@@ -209,7 +130,13 @@ def test_execution_unit_start_stop(test_config, tmp_path):
 
 
 # need test_config parameter so StorageName.collection is set
-def test_remote_metadata_reader_file_info(test_config, test_data_dir):
+# @patch('caom2pipe.manage_composable.compute_md5sum')
+@patch('possum2caom2.possum_execute.compute_md5sum')
+@patch('caom2utils.data_util.get_local_headers_from_fits')
+def test_remote_metadata_reader_file_info_and_todo_reader(header_mock, md5_mock, test_config, test_data_dir):
+    header_mock.return_value = []
+    md5_mock.return_value = 'abc'
+
     input_file = f'{test_data_dir}/storage_mock/rclone_lsjson.json'
     test_file_uri = 'cadc:POSSUM/PSM.0049-51.10887.i.fits'
     test_subject = possum_execute.RemoteMetadataReader()
@@ -225,9 +152,22 @@ def test_remote_metadata_reader_file_info(test_config, test_data_dir):
     assert test_result.file_type == 'application/fits', 'wrong file type'
     assert test_result.lastmod == datetime(2023, 11, 18, 20, 47, 50), 'wrong modification time'
 
-    # TODO - are these StorageName instances usable?
     test_storage_name = test_subject.storage_names.get(test_file_uri)
     assert test_storage_name.file_uri == test_file_uri, 'wrong file uri'
+
+    test_storage_name.rename('944MHz')
+    final_file_name = 'PSM_944MHz_20asec_0049-51_10887_i_v1.fits'
+    assert test_storage_name.stage_names[0] == final_file_name
+    test_storage_name_renamed = storage_name.PossumName(f'/tmp/{final_file_name}')
+    test_subject_2 = possum_execute.TodoMetadataReader(test_subject)
+    test_subject_2.set(test_storage_name_renamed)
+    assert len(test_subject_2.file_info) == 1, 'wrong bit of file_info'
+    test_file_info_result = test_subject_2.file_info.get(f'cadc:POSSUM/{final_file_name}')
+    assert test_file_info_result.size == 4831848000, 'renamed wrong size'
+    assert test_file_info_result.file_type == 'application/fits', 'renamed wrong file type'
+    assert test_file_info_result.lastmod == datetime(2023, 11, 18, 20, 47, 50), 'renamed wrong modification time'
+    assert test_file_info_result.md5sum == 'md5:abc', 'renamed wrong md5sum'
+    assert len(test_subject_2.headers) == 1, 'wrong header content'
 
 
 @patch('possum2caom2.possum_execute.exec_cmd')
@@ -267,7 +207,7 @@ def test_remote_data_source(exec_cmd_info_mock, exec_cmd_mock, test_data_dir, te
     assert test_result._clients == mock_1, 'clients'
     assert test_result._observable == mock_2, 'observable'
     assert test_result._reporter == mock_3, 'reporter'
-    assert test_result._metadata_reader == test_metadata_reader, 'reader'
+    assert test_result._remote_metadata_reader == test_metadata_reader, 'reader'
 
 
 def test_state_runner_reporter(test_config, tmp_path, change_test_dir):
@@ -324,38 +264,53 @@ def test_state_runner_reporter(test_config, tmp_path, change_test_dir):
     assert test_reporter.all == 0, 'reporter all'
 
 
+@patch('possum2caom2.preview_augmentation.visit')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 @patch('possum2caom2.possum_execute.exec_cmd')
 @patch('possum2caom2.possum_execute.exec_cmd_info')
 def test_state_runner_nominal_multiple_files(
-    exec_cmd_info_mock, exec_cmd_mock, header_mock, test_config, test_data_dir, tmp_path, change_test_dir
+    exec_cmd_info_mock,
+    exec_cmd_mock,
+    header_mock,
+    preview_mock,
+    test_config,
+    test_data_dir,
+    tmp_path,
+    change_test_dir,
 ):
     # test that three file get processed properly, and get left behind
     with open(f'{test_data_dir}/storage_mock/rclone_lsjson.json') as f:
         exec_cmd_info_mock.return_value = f.read()
 
-    w_test_file = 'PSM.0049-51.11092.w.fits.header'
-    q_test_file = 'PSM.1136-64.11836.q.fits.header'
-    u_test_file = 'PSM.1136-64.11485.u.fits.header'
+    i_test_file = 'PSM.0049-51.11092.i.fits'
+    q_test_file = 'PSM.1136-64.11836.q.fits'
+    u_test_file = 'PSM.1136-64.11485.u.fits'
     time_box_dir_name = '2023-10-28T20_47_49_2023-10-30T20_47_49'
+    time_box_dir_name_2 = '2023-11-17T20_47_49_2023-11-18T20_47_50'
     def _exec_cmd_mock(arg1):
         if arg1 == (
             'rclone copy --min 2023-10-28T20:47:49 --max 2023-10-30T20:47:49 --includes *.fits *.fits.header'
         ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits.header',
-                f'{tmp_path}/{time_box_dir_name}/{w_test_file}',
+                f'{tmp_path}/{time_box_dir_name}/{i_test_file}',
             )
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_i_v1.fits.header',
                 f'{tmp_path}/{time_box_dir_name}/{q_test_file}',
             )
+        elif arg1 == (
+            'rclone copy --min 2023-11-17T20:47:49 --max 2023-11-18T20:47:50 --includes *.fits *.fits.header'
+        ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_q_v1.fits.header',
-                f'{tmp_path}/{time_box_dir_name}/{u_test_file}',
+                f'{tmp_path}/{time_box_dir_name_2}/{u_test_file}',
             )
     exec_cmd_mock.side_effect = _exec_cmd_mock
     header_mock.side_effect = get_local_file_headers
+    preview_mock.side_effect = (
+        lambda x, working_directory, storage_name, log_file_directory, clients, observable, metadata_reader, config: x
+    )
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = False
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
@@ -374,6 +329,10 @@ def test_state_runner_nominal_multiple_files(
     test_reporter = ExecutionReporter(test_config, test_observable)
     test_clients = Mock()
     test_clients.metadata_client.read.return_value = None
+    test_observation = read_obs_from_file(f'{test_data_dir}/storage_mock/renaming_observation.xml')
+    test_clients.server_side_ctor_client.read.side_effect = [
+        None, test_observation, None, test_observation, None, test_observation
+    ]
     kwargs = {
         'clients': test_clients,
         'observable': test_observable,
@@ -399,62 +358,72 @@ def test_state_runner_nominal_multiple_files(
     assert test_result == 0, 'happy path'
     assert test_organizer.mock_calls == [call.choose], 'organizer'
     assert test_clients.mock_calls == [
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/{u_test_file.replace(".header", "")}'),
-        call.metadata_client.read('POSSUM', '1136-64_11485'),
+        call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
+        call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11836_q_v1.fits'),
+        call.metadata_client.read('POSSUM', '20asec_1136-64_11836_q_1511MHz'),
         call.metadata_client.create(ANY),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/{q_test_file.replace(".header", "")}'),
-        call.metadata_client.read('POSSUM', '1136-64_11836'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_0049-51_11092_i_v1.fits'),
+        call.metadata_client.read('POSSUM', '20asec_0049-51_11092_i_1511MHz'),
         call.metadata_client.create(ANY),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/{w_test_file.replace(".header", "")}'),
-        call.metadata_client.read('POSSUM', '0049-51_11092'),
+        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
+        call.metadata_client.read('POSSUM', '20asec_1136-64_11485_u_1511MHz'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
     assert exists(test_config.observable_directory), f'metrics {test_config.observable_directory}'
     assert test_data_source.end_dt == test_end_time, 'end_dt'
-    assert test_clients.data_client.put.called, 'data client put'
     assert test_reporter.all == 3, 'wrong file count'
     assert test_reporter.success == 3, 'wrong file count'
     left_behind = listdir(f'{tmp_path}/{time_box_dir_name}')
-    assert len(left_behind) == 3, 'no files cleaned up'
+    left_behind_2 = listdir(f'{tmp_path}/{time_box_dir_name_2}')
+    assert len(left_behind) + len(left_behind_2) == 3, 'no files cleaned up'
 
 
-def test_state_runner_clean_up_when_storing(test_config):
+@patch('possum2caom2.preview_augmentation.visit')
+@patch('caom2utils.data_util.get_local_headers_from_fits')
+@patch('possum2caom2.possum_execute.exec_cmd')
+@patch('possum2caom2.possum_execute.exec_cmd_info')
+def test_state_runner_clean_up_when_storing_with_retry(
+    exec_cmd_info_mock, exec_cmd_mock, header_mock, visit_mock, test_config, test_data_dir, tmp_path, change_test_dir
+):
     # one file gets cleaned up
-    test_config.cleanup_files_when_storing = True
     with open(f'{test_data_dir}/storage_mock/rclone_lsjson.json') as f:
         exec_cmd_info_mock.return_value = f.read()
 
-    w_test_file = 'PSM.0049-51.11092.w.fits.header'
-    q_test_file = 'PSM.1136-64.11836.q.fits.header'
-    u_test_file = 'PSM.1136-64.11485.u.fits.header'
+    u_test_file = 'PSM.1136-64.11485.u.fits'
     time_box_dir_name = '2023-10-28T20_47_49_2023-10-30T20_47_49'
     def _exec_cmd_mock(arg1):
         if arg1 == (
             'rclone copy --min 2023-10-28T20:47:49 --max 2023-10-30T20:47:49 --includes *.fits *.fits.header'
         ):
             copyfile(
-                f'{test_data_dir}/casda/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits.header',
-                f'{tmp_path}/{time_box_dir_name}/{w_test_file}',
-            )
-            copyfile(
-                f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_i_v1.fits.header',
-                f'{tmp_path}/{time_box_dir_name}/{q_test_file}',
-            )
-            copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_q_v1.fits.header',
                 f'{tmp_path}/{time_box_dir_name}/{u_test_file}',
             )
     exec_cmd_mock.side_effect = _exec_cmd_mock
     header_mock.side_effect = get_local_file_headers
+    visit_mock.side_effect = (
+        lambda x, working_directory, storage_name, log_file_directory, clients, observable, metadata_reader, config: x
+    )
     test_config.change_working_directory(tmp_path)
-    test_config.cleanup_files_when_storing = False
+    test_config.cleanup_files_when_storing = True
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
     test_config.data_sources = ['test/acacia/possum1234']
     test_config.data_source_extensions = ['.fits', '.fits.header']
     test_config.logging_level = 'INFO'
     test_config.interval = 60 * 48  # work in time-boxes of 2 days => 60m * 48h
     test_config.observe_execution = True
+    test_config.retry_failures = True
+    test_config.retry_count = 1
+    test_config.retry_decay = 0
     test_organizer = Mock()
     # the time-box times, or, this is "when" the code looks
     test_start_time = make_datetime('2023-10-28T20:47:49.000000000Z')
@@ -464,7 +433,9 @@ def test_state_runner_clean_up_when_storing(test_config):
     test_observable = Observable(test_config)
     test_reporter = ExecutionReporter(test_config, test_observable)
     test_clients = Mock()
-    test_clients.metadata_client.read.return_value = None
+    test_clients.metadata_client.read.side_effect = [CadcException, None]
+    test_observation = read_obs_from_file(f'{test_data_dir}/storage_mock/renaming_observation.xml')
+    test_clients.server_side_ctor_client.read.side_effect = [None, test_observation]
     kwargs = {
         'clients': test_clients,
         'observable': test_observable,
@@ -490,22 +461,20 @@ def test_state_runner_clean_up_when_storing(test_config):
     assert test_result == 0, 'happy path'
     assert test_organizer.mock_calls == [call.choose], 'organizer'
     assert test_clients.mock_calls == [
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/{u_test_file.replace(".header", "")}'),
-        call.metadata_client.read('POSSUM', '1136-64_11485'),
-        call.metadata_client.create(ANY),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/{q_test_file.replace(".header", "")}'),
-        call.metadata_client.read('POSSUM', '1136-64_11836'),
-        call.metadata_client.create(ANY),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/{w_test_file.replace(".header", "")}'),
-        call.metadata_client.read('POSSUM', '0049-51_11092'),
+        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
+        call.metadata_client.read('POSSUM', '20asec_1136-64_11485_u_1511MHz'),
+        # because there's a retry
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
+        call.metadata_client.read('POSSUM', '20asec_1136-64_11485_u_1511MHz'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
     assert exists(test_config.observable_directory), f'metrics {test_config.observable_directory}'
     assert test_data_source.end_dt == test_end_time, 'end_dt'
-    assert test_clients.data_client.put.called, 'data client put'
-    assert test_reporter.all == 3, 'wrong file count'
-    assert test_reporter.success == 3, 'wrong file count'
-    left_behind = listdir(f'{tmp_path}/{time_box_dir_name}')
-    assert len(left_behind) == 3, 'no files cleaned up'
-    assert False
+    assert test_reporter.all == 1, 'wrong file count'
+    assert test_reporter.success == 1, 'wrong file count'
+    left_behind = glob(f'{tmp_path}/2*')
+    assert len(left_behind) == 0, 'files should be cleaned up'

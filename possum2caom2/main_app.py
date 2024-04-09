@@ -503,5 +503,5 @@ def mapping_factory(storage_name, headers, clients, observable, observation, con
         result = TaylorMapping(storage_name, headers, clients, observable, observation, config)
     else:
         result = InputTileMapping(storage_name, headers, clients, observable, observation, config)
-    logging.error(f'Constructed {result.__class__.__name__} for mapping.')
+    logging.info(f'Constructed {result.__class__.__name__} for mapping {storage_name.file_name}.')
     return result

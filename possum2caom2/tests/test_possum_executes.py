@@ -68,7 +68,7 @@
 
 import logging
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from glob import glob
 from os import listdir
 from os.path import exists
@@ -130,7 +130,6 @@ def test_execution_unit_start_stop(test_config, tmp_path):
 
 
 # need test_config parameter so StorageName.collection is set
-# @patch('caom2pipe.manage_composable.compute_md5sum')
 @patch('possum2caom2.possum_execute.compute_md5sum')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 def test_remote_metadata_reader_file_info_and_todo_reader(header_mock, md5_mock, test_config, test_data_dir):
@@ -145,7 +144,6 @@ def test_remote_metadata_reader_file_info_and_todo_reader(header_mock, md5_mock,
         test_subject.set_file_info(f.read())
 
     assert len(test_subject.file_info) == 4, 'wrong number of results'
-    logging.error(test_subject.file_info.keys())
     test_result = test_subject.file_info.get(test_file_uri)
     assert test_result is not None, 'expect a result'
     assert test_result.size == 4831848000, 'wrong size'
@@ -198,6 +196,7 @@ def test_remote_data_source(exec_cmd_info_mock, exec_cmd_mock, test_data_dir, te
         test_metadata_reader,
         **kwargs,
     )
+    test_subject.reporter = mock_3
     test_subject.initialize_start_dt()
     assert test_subject.start_dt == datetime(2023, 10, 28, 20, 47, 49), 'start_dt'
     test_subject.initialize_end_dt()
@@ -208,6 +207,7 @@ def test_remote_data_source(exec_cmd_info_mock, exec_cmd_mock, test_data_dir, te
     assert test_result._observable == mock_2, 'observable'
     assert test_result._reporter == mock_3, 'reporter'
     assert test_result._remote_metadata_reader == test_metadata_reader, 'reader'
+    assert mock_3.capture_todo.called, 'capture_todo'
 
 
 def test_state_runner_reporter(test_config, tmp_path, change_test_dir):
@@ -231,6 +231,7 @@ def test_state_runner_reporter(test_config, tmp_path, change_test_dir):
     execution_unit_mock = Mock()
     type(execution_unit_mock).entry_dt = test_entry_time
     type(execution_unit_mock).num_entries = 1
+    execution_unit_mock.do.return_value = 0
     test_data_source.get_time_box_work.return_value = execution_unit_mock
     test_data_sources = [test_data_source]
     test_observable = Mock()
@@ -289,7 +290,7 @@ def test_state_runner_nominal_multiple_files(
     time_box_dir_name_2 = '2023-11-17T20_47_49_2023-11-18T20_47_50'
     def _exec_cmd_mock(arg1):
         if arg1 == (
-            'rclone copy --min 2023-10-28T20:47:49 --max 2023-10-30T20:47:49 --includes *.fits *.fits.header'
+            f'rclone copy test:acacia/possum1234 {tmp_path}/{time_box_dir_name} --max-age 1698526069.0 --min-age 1698698869.0 --includes *.fits *.fits.header'
         ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits.header',
@@ -300,7 +301,7 @@ def test_state_runner_nominal_multiple_files(
                 f'{tmp_path}/{time_box_dir_name}/{q_test_file}',
             )
         elif arg1 == (
-            'rclone copy --min 2023-11-17T20:47:49 --max 2023-11-18T20:47:50 --includes *.fits *.fits.header'
+            f'rclone copy test:acacia/possum1234 {tmp_path}/{time_box_dir_name_2} --max-age 1700254069.0 --min-age 1700340470.0 --includes *.fits *.fits.header'
         ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_q_v1.fits.header',
@@ -380,8 +381,8 @@ def test_state_runner_nominal_multiple_files(
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
     assert exists(test_config.observable_directory), f'metrics {test_config.observable_directory}'
     assert test_data_source.end_dt == test_end_time, 'end_dt'
-    assert test_reporter.all == 3, 'wrong file count'
-    assert test_reporter.success == 3, 'wrong file count'
+    assert test_reporter.all == 4, f'wrong file count all {test_reporter.all}'
+    assert test_reporter.success == 3, f'wrong file count success {test_reporter.success}'
     left_behind = listdir(f'{tmp_path}/{time_box_dir_name}')
     left_behind_2 = listdir(f'{tmp_path}/{time_box_dir_name_2}')
     assert len(left_behind) + len(left_behind_2) == 3, 'no files cleaned up'
@@ -402,7 +403,7 @@ def test_state_runner_clean_up_when_storing_with_retry(
     time_box_dir_name = '2023-10-28T20_47_49_2023-10-30T20_47_49'
     def _exec_cmd_mock(arg1):
         if arg1 == (
-            'rclone copy --min 2023-10-28T20:47:49 --max 2023-10-30T20:47:49 --includes *.fits *.fits.header'
+            f'rclone copy test:acacia/possum1234 {tmp_path}/{time_box_dir_name} --max-age 1698526069.0 --min-age 1698698869.0 --includes *.fits *.fits.header'
         ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_q_v1.fits.header',
@@ -458,7 +459,7 @@ def test_state_runner_clean_up_when_storing_with_retry(
     )
     test_result = test_subject.run()
     assert test_result is not None, 'expect a result'
-    assert test_result == 0, 'happy path'
+    assert test_result == -1, 'happy path with a retry'
     assert test_organizer.mock_calls == [call.choose], 'organizer'
     assert test_clients.mock_calls == [
         call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
@@ -474,7 +475,60 @@ def test_state_runner_clean_up_when_storing_with_retry(
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
     assert exists(test_config.observable_directory), f'metrics {test_config.observable_directory}'
     assert test_data_source.end_dt == test_end_time, 'end_dt'
-    assert test_reporter.all == 1, 'wrong file count'
-    assert test_reporter.success == 1, 'wrong file count'
+    assert test_reporter.all == 4, f'wrong file count all {test_reporter.all}'
+    assert test_reporter.success == 1, f'wrong file count {test_reporter.success}'
     left_behind = glob(f'{tmp_path}/2*')
     assert len(left_behind) == 0, 'files should be cleaned up'
+
+
+@patch('possum2caom2.possum_execute.exec_cmd')
+@patch('possum2caom2.possum_execute.exec_cmd_info')
+@patch('possum2caom2.possum_execute.RCloneClients')
+def test_remote_execution(
+    clients_mock, exec_cmd_info_mock, exec_cmd_mock, test_config, tmp_path, change_test_dir
+):
+    # execution path for "rclone lsjson" working, but not "rclone copy"
+    # config
+    test_config.change_working_directory(tmp_path)
+    test_config.cleanup_files_when_storing = False
+    test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
+    test_config.data_sources = ['test/acacia/possum1234']
+    test_config.data_source_extensions = ['.fits', '.fits.header']
+    test_config.logging_level = 'INFO'
+    test_config.interval = 60 * 48  # work in time-boxes of 2 days => 60m * 48h
+    test_config.observe_execution = True
+    test_config.write_to_file(test_config)
+
+    # state
+    tomorrow = datetime.now() + timedelta(days=1)
+    State.write_bookmark(test_config.state_fqn, test_config.data_sources[0], tomorrow)
+
+    # exec
+    file_mod_time = tomorrow + timedelta(minutes=1)
+    def _exec_cmd_info_mock(arg1):
+        assert arg1.startswith(
+            f'rclone lsjson test:acacia/possum1234 --max-age {tomorrow.timestamp()} --includes *'
+        ), f'exec_cmd_info {arg1}'
+        return (
+            f'[{{\"Path\":\"components/0049-51/survey/i/PSM.0049-51.10887.i.fits\",\"Name\":'
+            f'\"PSM.0049-51.10887.i.fits\",\"Size\":16787520,\"MimeType\":\"image/fits\",\"ModTime\":'
+            f'\"{file_mod_time}\",\"IsDir\":false,\"Tier\":\"STANDARD\"}}]'
+        )
+    exec_cmd_info_mock.side_effect = _exec_cmd_info_mock
+    test_working_directory = (
+        f'{tmp_path}/{tomorrow.isoformat().replace(":", "_").replace(".", "_")}_'
+        f'{file_mod_time.isoformat().replace(":", "_").replace(".", "_")}'
+    )
+    def _exec_cmd_mock(arg1):
+        assert arg1.startswith(
+            f'rclone copy test:acacia/possum1234 {test_working_directory} --max-age {tomorrow.timestamp()} --min-age {file_mod_time.timestamp()} --includes'
+        ), f'exec_cmd {arg1}'
+    exec_cmd_mock.side_effect = _exec_cmd_mock
+
+    test_result = possum_execute.remote_execution()
+    assert test_result == -1, 'expect failure result'
+    assert clients_mock.data_client.mock_calls == [], f'client mock {clients_mock.data_client.mock_calls}'
+    assert clients_mock.metadata_client.mock_calls == [], f'client mock {clients_mock.metadata_client.mock_calls}'
+    assert (
+        clients_mock.server_side_ctor_client.mock_calls == []
+    ), f'client mock {clients_mock.server_side_ctor_client.mock_calls}'

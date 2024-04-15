@@ -107,7 +107,7 @@ class RCloneClients(ClientCollection):
         # TODO rclone credentials
         self._rclone_client = None
         self._server_side_ctor_client = CAOM2RepoClient(
-            self._subject, self._config.logging_level, self._config.server_side_constructor_resource_id
+            self._subject, self._config.logging_level, self._config.server_side_resource_id
         )
 
     @property
@@ -188,7 +188,7 @@ class RemoteMetadataReader(FileMetadataReader):
                     else:
                         self._max_dt = self._file_info[possum_name.file_uri].lastmod
                     self._storage_names[possum_name.file_uri] = possum_name
-        self._logger.debug('End set_file_info')
+        self._logger.debug(f'End set_file_info with max datetime {self._max_dt}')
 
     def set_headers(self, storage_name, working_directory):
         self._logger.debug(f'Begin set_headers for {storage_name.file_name}')
@@ -223,13 +223,22 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         self._data_source_extensions = ' '.join(f'*{ii}' for ii in config.data_source_extensions)
         self._metadata_reader = metadata_reader
         self._kwargs = kwargs
+        # adjust config file syntax for the data sources, which was done so it would work with basic yaml
+        self._remote_key = start_key.replace('/', ':', 1)
+
+    def _capture_todo(self):
+        self._reporter.capture_todo(len(self._metadata_reader.file_info), self._rejected_files, self._skipped_files)
+        # do not need the record of the rejected or skipped files any longer
+        self._rejected_files = 0
+        self._skipped_files = 0
 
     def _initialize_end_dt(self):
         self._logger.debug('Begin _initialize_end_dt')
-        output = exec_cmd_info(f'rclone lsjson {self._start_key} --min {self._start_dt} --includes {self._data_source_extensions}')
+        output = exec_cmd_info(f'rclone lsjson {self._remote_key} --max-age {self._start_dt.timestamp()} --includes {self._data_source_extensions}')
         self._metadata_reader.set_file_info(output)
         self._end_dt = self._metadata_reader.max_dt
-        self._logger.debug('End _initialize_end_dt')
+        self._capture_todo()
+        self._logger.debug(f'End _initialize_end_dt with {self._end_dt}')
 
     def get_time_box_work(self, prev_exec_dt, exec_dt):
         self._logger.debug('Begin get_time_box_work')
@@ -239,12 +248,37 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         execution_unit = ExecutionUnit(self._config, **self._kwargs)
         execution_unit.start()
         # get the files from the DataSource to the staging space
-        exec_cmd(f'rclone copy --min {prev_exec_dt.isoformat()} --max {exec_dt.isoformat()} --includes {self._data_source_extensions}')
+        # --max-age  -> only transfer files younger than this in s
+        # --min-age -> only transfer files older than this in s
+        exec_cmd(
+            f'rclone copy {self._remote_key} {execution_unit.working_directory} --max-age {prev_exec_dt.timestamp()} '
+            f'--min-age {exec_dt.timestamp()} --includes {self._data_source_extensions}'
+        )
         execution_unit.num_entries, execution_unit.entry_dt = self._metadata_reader.get_time_box_work_parameters(prev_exec_dt, exec_dt)
         if execution_unit.num_entries == 0:
             execution_unit.stop()
         self._logger.debug('End get_time_box_work')
         return execution_unit
+
+
+class RemoteListDirDataSource(ListDirSeparateDataSource):
+
+    def __init__(self, config):
+        super().__init__(config)
+        self._num_entries = None
+
+    @property
+    def num_entries(self):
+        return self._num_entries
+
+    def _capture_todo(self):
+        # do not update total record count, that's already been done in the RemoteIncrementalDataSource
+        pass
+
+    def get_work(self):
+        result = super().get_work()
+        self._num_entries = len(result)
+        return result
 
 
 class ExecutionUnitStateRunner(StateRunner):
@@ -301,9 +335,8 @@ class ExecutionUnitStateRunner(StateRunner):
                 work = data_source.get_time_box_work(prev_exec_time, exec_time)
                 if work.num_entries > 0:
                     try:
-                        # work.start()
                         self._logger.info(f'Processing {work.num_entries} entries.')
-                        work.do()
+                        result |= work.do()
                     finally:
                         work.stop()
                     save_time = min(work.entry_dt, exec_time)
@@ -426,7 +459,7 @@ class ExecutionUnit:
             self._observable,
             self._reporter,
         )
-        local_data_source = ListDirSeparateDataSource(todo_config)
+        local_data_source = RemoteListDirDataSource(todo_config)
         local_data_source.reporter = self._reporter
         builder = EntryBuilder(PossumName)
         # start a TodoRunner with the new Config instance, data_source, and metadata_reader
@@ -442,7 +475,12 @@ class ExecutionUnit:
         result = todo_runner.run()
         if todo_config.cleanup_files_when_storing:
             result |= todo_runner.run_retry()
-            todo_runner.report()
+
+        if local_data_source.num_entries != self._num_entries:
+            self._logger.error(
+                f'Expected to process {self._num_entries} entries, but found {local_data_source.num_entries} entries.'
+            )
+            result = -1
         self._logger.debug(f'End do with result {result}')
         return result
 
@@ -609,6 +647,7 @@ def remote_execution():
     Stage 2 is controlled with a TodoRunner, that is created for every ExecutionUnitStateRunner time-box that brings
     over files.
     """
+    logging.debug('Begin remote_execution')
     config = Config()
     config.get_executors()
     set_logging(config)
@@ -636,11 +675,12 @@ def remote_execution():
     runner = ExecutionUnitStateRunner(
         config,
         organizer,
-        sources=data_sources,
+        data_sources=data_sources,
         observable=observable,
         reporter=reporter,
     )
     result = runner.run()
     result |= runner.run_retry()
     runner.report()
+    logging.debug('End remote_execution')
     return result

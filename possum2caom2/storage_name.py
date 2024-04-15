@@ -115,6 +115,8 @@ class PossumName(StorageName):
     POSSUM_NAME_PATTERN = '*'
 
     def __init__(self, entry):
+        self._healpix_index = None
+        self._spatial_resolution = None
         super().__init__(file_name=basename(entry.replace('.header', '')), source_names=[entry])
         # the renamed files in a list
         self._stage_names = []
@@ -126,9 +128,21 @@ class PossumName(StorageName):
         return self._get_uri(self._file_name.replace('.gz', '').replace('.header', ''), current_scheme)
 
     @property
+    def healpix_index(self):
+        return self._healpix_index
+
+    @property
+    def is_bintable(self):
+        return '_FDFs.fits' in self._file_name or '_spectra.fits' in self._file_name
+
+    @property
     def prev(self):
         """The preview file name for the file."""
         return f'{self._obs_id}_{self._product_id}_prev.jpg'
+
+    @property
+    def spatial_resolution(self):
+        return self._spatial_resolution
 
     @property
     def stage_names(self):
@@ -175,10 +189,18 @@ class PossumName(StorageName):
         # leave off the "PSM" because collection is POSSUM
         bits = self._file_id.split('_')
         if len(bits) > 1:
-            self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}_{bits[1]}'
+            if 'pilot' in self._file_id:
+                self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}_{bits[1]}'
+                self._healpix_index = bits[5]
+                self._spatial_resolution = float(bits[3].replace('asec', ''))
+            else:
+                self._obs_id = f'{bits[1]}_{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}'
+                self._healpix_index = bits[4]
+                self._spatial_resolution = float(bits[2].replace('asec', ''))
         else:
             bits = self._file_id.split('.')
             self._obs_id = f'{bits[1]}_{bits[2]}'
+            self._healpix_index = bits[2]
 
     def set_product_id(self):
         bits = self._file_id.split('_')
@@ -189,7 +211,9 @@ class PossumName(StorageName):
             if '_p3d_' in self._file_id:
                 self._product_id = '3d_pipeline'
             elif '_p1d_' in self._file_id:
-                self._product_id = '1d_pipeline'
+                # catalog in csv, spectra, FDF in BINTABLE
+                # self._product_id = '1d_pipeline'
+                self._product_id = self._file_id
             elif bits[index] == 'i':
                 self._product_id = 'raw_i'
             elif bits[index] == 'q' or bits[index] == 'u':
@@ -210,6 +234,10 @@ class PossumName(StorageName):
                 self._product_id = 'idk'
             else:
                 raise CadcException(f'Unexpected file naming pattern {self._file_id}')
+
+    def un_name(self):
+        """Undo the renaming from Pawsey Acacia, to be able to work backwards for sc2 Observation metadata."""
+        return self._obs_id.split('asec_')[1].split('_v1')[0]
 
     def _get_scheme(self):
         if self._product_id in ['raw_i', 'raw_qu'] or self._product_id.startswith('multifrequencysynthesis_'):

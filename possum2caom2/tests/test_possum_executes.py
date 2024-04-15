@@ -365,16 +365,16 @@ def test_state_runner_nominal_multiple_files(
         call.server_side_ctor_client.create(ANY),
         call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11836_q_v1.fits'),
-        call.metadata_client.read('POSSUM', '20asec_1136-64_11836_q_1511MHz'),
+        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11836_q'),
         call.metadata_client.create(ANY),
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_0049-51_11092_i_v1.fits'),
-        call.metadata_client.read('POSSUM', '20asec_0049-51_11092_i_1511MHz'),
+        call.metadata_client.read('POSSUM', '1511MHz_20asec_0049-51_11092_i'),
         call.metadata_client.create(ANY),
         call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
         call.server_side_ctor_client.create(ANY),
         call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
         call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
-        call.metadata_client.read('POSSUM', '20asec_1136-64_11485_u_1511MHz'),
+        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
@@ -465,10 +465,10 @@ def test_state_runner_clean_up_when_storing_with_retry(
         call.server_side_ctor_client.create(ANY),
         call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
-        call.metadata_client.read('POSSUM', '20asec_1136-64_11485_u_1511MHz'),
+        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
         # because there's a retry
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
-        call.metadata_client.read('POSSUM', '20asec_1136-64_11485_u_1511MHz'),
+        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'

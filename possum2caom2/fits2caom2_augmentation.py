@@ -66,7 +66,7 @@
 #
 
 
-from caom2utils.parsers import BlueprintParser
+from caom2utils.parsers import BlueprintParser, FitsParser
 from caom2pipe import caom_composable as cc
 from possum2caom2.main_app import mapping_factory
 
@@ -82,6 +82,16 @@ class PossumFits2caom2Visitor(cc.Fits2caom2Visitor):
         return mapping_factory(
             self._storage_name, headers, self._clients, self._observable, self._observation, self._config
         )
+
+    def _get_parser(self, headers, blueprint, uri):
+        if headers is None or len(headers) == 0 or self._storage_name.is_bintable:
+            self._logger.debug(f'No headers, using a BlueprintParser for {self._storage_name.file_uri}')
+            parser = BlueprintParser(blueprint, uri)
+        else:
+            self._logger.debug(f'Using a FitsParser for {self._storage_name.file_uri}')
+            parser = FitsParser(headers, blueprint, uri)
+        self._logger.debug(f'Created {parser.__class__.__name__} parser for {uri}.')
+        return parser
 
 
 def visit(observation, **kwargs):

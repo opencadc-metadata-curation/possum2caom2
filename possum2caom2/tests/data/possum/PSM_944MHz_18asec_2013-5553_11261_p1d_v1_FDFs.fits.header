@@ -1,0 +1,63 @@
+# HDU 0 in PSM_944MHz_18asec_2013-5553_11261_p1d_v1_FDFs.fits:
+SIMPLE  =                    T / conforms to FITS standard                      
+BITPIX  =                    8 / array data type                                
+NAXIS   =                    0 / number of array dimensions                     
+EXTEND  =                    T                                                  
+
+# HDU 1 in PSM_944MHz_18asec_2013-5553_11261_p1d_v1_FDFs.fits:
+XTENSION= 'BINTABLE'           / binary table extension                         
+BITPIX  =                    8 / array data type                                
+NAXIS   =                    2 / number of array dimensions                     
+NAXIS1  =                19316 / length of dimension 1                          
+NAXIS2  =                   35 / length of dimension 2                          
+PCOUNT  =                    0 / number of group parameters                     
+GCOUNT  =                    1 / number of groups                               
+TFIELDS =                    8 / number of table fields                         
+TTYPE1  = 'ra      '                                                            
+TFORM1  = 'D       '                                                            
+TUNIT1  = 'deg     '                                                            
+TTYPE2  = 'dec     '                                                            
+TFORM2  = 'D       '                                                            
+TUNIT2  = 'deg     '                                                            
+TTYPE3  = 'l       '                                                            
+TFORM3  = 'D       '                                                            
+TUNIT3  = 'deg     '                                                            
+TTYPE4  = 'b       '                                                            
+TFORM4  = 'D       '                                                            
+TUNIT4  = 'deg     '                                                            
+TTYPE5  = 'phi_fdf '                                                            
+TFORM5  = '321E    '                                                            
+TUNIT5  = 'm-2 rad '                                                            
+TDIM5   = '(321)   '                                                            
+TTYPE6  = 'fdf     '                                                            
+TFORM6  = '321C    '                                                            
+TUNIT6  = 'Jy/PSF/RMSF'                                                         
+TDIM6   = '(321)   '                                                            
+TTYPE7  = 'phi_rmsf'                                                            
+TFORM7  = '643D    '                                                            
+TUNIT7  = 'm-2 rad '                                                            
+TDIM7   = '(643)   '                                                            
+TTYPE8  = 'rmsf    '                                                            
+TFORM8  = '643M    '                                                            
+TDIM8   = '(643)   '                                                            
+COMMENT --BEGIN-ASTROPY-SERIALIZED-COLUMNS--                                    
+COMMENT datatype:                                                               
+COMMENT - {name: ra, unit: deg, datatype: float64, description: Right Ascensio\ 
+COMMENT n (ICRS)}                                                               
+COMMENT - {name: dec, unit: deg, datatype: float64, description: Declination (\ 
+COMMENT ICRS)}                                                                  
+COMMENT - {name: l, unit: deg, datatype: float64, description: Galactic Longit\ 
+COMMENT ude}                                                                    
+COMMENT - {name: b, unit: deg, datatype: float64, description: Galactic Latitu\ 
+COMMENT de}                                                                     
+COMMENT - {name: phi_fdf, unit: rad / m2, datatype: string, description: Farad\ 
+COMMENT ay depth (FDF), subtype: 'float32[321]'}                                
+COMMENT - {name: fdf, unit: Jy/PSF/RMSF, datatype: string, description: Dirty \ 
+COMMENT FDF, subtype: 'complex64[321]'}                                         
+COMMENT - {name: phi_rmsf, unit: rad / m2, datatype: string, description: Fara\ 
+COMMENT day depth (RMSF), subtype: 'float64[643]'}                              
+COMMENT - {name: rmsf, datatype: string, description: RMSF, subtype: 'complex1\ 
+COMMENT 28[643]'}                                                               
+COMMENT meta:                                                                   
+COMMENT   __serialized_columns__: {}                                            
+COMMENT --END-ASTROPY-SERIALIZED-COLUMNS--                                      

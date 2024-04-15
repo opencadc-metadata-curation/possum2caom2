@@ -83,13 +83,16 @@ import traceback
 from datetime import datetime, timedelta
 from urllib import parse as parse
 
+from astropy_healpix import HEALPix
 from astropy.io import fits
 
-from caom2 import CalibrationLevel, DataProductType, ProductType, ReleaseType
+from caom2 import CalibrationLevel, DataProductType, DerivedObservation, MultiPolygon, ProductType, ReleaseType, Point
+from caom2 import Polygon, Position, SegmentType, Vertex
 from caom2utils.blueprints import _to_float
 from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
 from caom2pipe import caom_composable as cc
+from caom2pipe.client_composable import repo_get
 from caom2pipe.manage_composable import CadcException, ValueRepairCache
 
 
@@ -449,39 +452,71 @@ class OutputFWHM(OutputCustomSpatial):
         self._logger.debug('Done accumulate_bp.')
 
 
-class Possum1DBINTABLE(Possum1DMapping):
+class Catalog1DMapping(Possum1DMapping):
 
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
     def accumulate_blueprint(self, bp):
         super().accumulate_blueprint(bp)
-        bp.configure_position_axes((1, 2))
-        extension = 1
-        # hard-coded values from
-        # POSSUM PIPELINE: Inputs and Outputs, Version 1.2, January 20, 2023
-        bp.set('Chunk.position.axis.axis1.ctype', 'RA---HPX')
-        # deg
-        bp.add_table_attribute('Chunk.position.axis.axis1.cunit', 'TUNIT3', extension)
-        bp.set('Chunk.position.axis.axis2.ctype', 'DEC--HPX')
-        # deg
-        bp.add_table_attribute('Chunk.position.axis.axis2.cunit', 'TUNIT4', extension)
-        bp.set('Chunk.position.axis.function.dimension.naxis1', 1)
-        bp.set('Chunk.position.axis.function.dimension.naxis2', 1)
-        bp.set('Chunk.position.axis.function.refCoord.coord1.pix', 1.0)
-        # ra
-        bp.add_table_attribute('Chunk.position.axis.function.refCoord.coord1.val', 'TTYPE2', extension)
-        bp.set('Chunk.position.axis.function.refCoord.coord2.pix', 1.0)
-        # dec
-        bp.add_table_attribute('Chunk.position.axis.function.refCoord.coord2.val', 'TTYPE3', extension)
+        bp.set('DerivedObservation.members', {})
+        bp.set('Observation.algorithm.name', 'catalog')
+        bp.set('Plane.calibrationLevel', CalibrationLevel.PRODUCT)
+        bp.set('Plane.dataProductType', DataProductType.CATALOG)
+
+    def _update_plane(self, plane):
+        super()._update_plane(plane)
+        hp = HEALPix(nside=32, frame='icrs')
+        vertices = []
+        points = []
+        vertex_start = None
+        x = hp.boundaries_skycoord(healpix_index=self._storage_name.healpix_index, step=1)
+        for x1 in x:
+            for x2 in x1:
+                point = Point(x2.ra.value, x2.dec.value)
+                points.append(point)
+                if vertex_start:
+                    vertex = Vertex(x2.ra.value, x2.dec.value, SegmentType.LINE)
+                else:
+                    vertex = Vertex(x2.ra.value, x2.dec.value, SegmentType.MOVE)
+                    vertex_start = vertex
+                vertices.append(vertex)
+        vertex_end = Vertex(vertex_start.cval1, vertex_start.cval2, SegmentType.CLOSE)
+        vertices.append(vertex_end)
+        samples = MultiPolygon(vertices=vertices)
+        bounds = Polygon(points=points, samples=samples)
+        position = Position(
+            bounds=bounds, resolution=self._storage_name.spatial_resolution
+        )
+        plane.position = position
+        # find the existing Observation metadata, with the original observationID
+        # TODO going to have to look for a different observationID, because there's no
+        # Chunk-level metadata in this Observation
+        existing = None
+        for client in [self._clients.metadata_client, self._clients.server_side_ctor_client]:
+            existing = repo_get(
+                client,
+                self._storage_name.collection,
+                self._storage_name.obs_id,
+                self._observable.metrics,
+            )
+            if existing:
+                break
+        if existing:
+            for existing_plane in existing.planes.values():
+                if existing_plane.uri == self._storage_name.file_uri:
+                    # copy metadata from another plane - TODO - this won't work for 1d pipeline files
+                    continue
+                else:
+                    plane.energy = existing_plane.energy
+                    plane.polarization = existing_plane.polarization
+                    plane.custom = existing_plane.custom
+                    break
 
 
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
-    if storage_name.product_id == '1d_pipeline':
-        if '_spectra' in storage_name.file_name:
-            result = Possum1DBINTABLE(storage_name, headers, clients, observable, observation, config)
-        else:
-            result = Possum1DMapping(storage_name, headers, clients, observable, observation, config)
+    if storage_name.is_bintable:
+        result = Catalog1DMapping(storage_name, headers, clients, observable, observation, config)
     elif storage_name.product_id == '3d_pipeline':
         naxis = None
         if headers and len(headers) > 0:

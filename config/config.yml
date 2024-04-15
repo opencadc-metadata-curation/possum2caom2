@@ -8,6 +8,7 @@ proxy_file_name: /usr/src/app/cadcproxy.pem
 # operational value is ivo://cadc.nrc.ca/ams
 # - modifies entries on sc2.canfar.net
 resource_id: ivo://cadc.nrc.ca/sc2repo
+server_side_resource_id: ivo://cadc.nrc.ca/sc2repo
 # resource_id: ivo://cadc.nrc.ca/ams
 # operational value is ivo://cadc.nrc.ca/ams/possum
 # - queries entries on sc2.canfar.net
@@ -94,3 +95,4 @@ meta_read_groups:
 task_types: 
   - store
   - ingest
+  - modify

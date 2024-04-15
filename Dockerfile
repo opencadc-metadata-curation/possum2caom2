@@ -1,9 +1,12 @@
-ARG OPENCADC_PYTHON_VERSION=3.11
+ARG OPENCADC_PYTHON_VERSION=3.12
 FROM opencadc/matplotlib:${OPENCADC_PYTHON_VERSION}-slim as builder
+ARG OPENCADC_PYTHON_VERSION
 
 RUN apt-get update --no-install-recommends && \
-    apt-get install -y build-essential git libcfitsio-bin && \
+    apt-get install -y build-essential busybox curl git libcfitsio-bin && \
     rm -rf /var/lib/apt/lists/ /tmp/* /var/tmp/*
+
+RUN curl https://rclone.org/install.sh | bash
 
 WORKDIR /usr/src/app
 

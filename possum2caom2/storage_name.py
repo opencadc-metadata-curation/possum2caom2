@@ -117,9 +117,13 @@ class PossumName(StorageName):
     def __init__(self, entry):
         self._healpix_index = None
         self._spatial_resolution = None
-        super().__init__(file_name=basename(entry.replace('.header', '')), source_names=[entry])
         # the renamed files in a list
         self._stage_names = []
+        super().__init__(file_name=basename(entry.replace('.header', '')), source_names=[entry])
+
+    def __str__(self):
+        temp = super().__str__()
+        return f'{temp}\n          rename: {self.rename("")}\n   healpix_index: {self._healpix_index}\n      resolution: {self._spatial_resolution}'
 
     @property
     def file_uri(self):
@@ -154,6 +158,10 @@ class PossumName(StorageName):
         return f'{self._obs_id}_{self._product_id}_prev_256.jpg'
 
     def rename(self, band, version='v1', resolution='20asec'):
+        if 'asec' in self._file_id:
+            self._logger.error('second time through')
+            return self._file_name
+        self._logger.error(self._file_name)
         # Jennifer West, 08-04-24
         # band1 == 944MHz, band2 == 1296MHz
         # is version == v1
@@ -161,12 +169,23 @@ class PossumName(StorageName):
         x = self._file_name.split('.fits')
         bits = x[0].split('.')
         temp1 = '_'.join(ii for ii in bits)
-        insert = f'PSM_{band}_{resolution}'
-        temp2 = temp1.replace('PSM', insert)
+        if 'band1' in self._file_name:
+            y = temp1.replace('band1', f'944MHz_{resolution}')
+        elif 'band2' in self._file_name:
+            y = temp1.replace('band2', f'1296MHz_{resolution}')
+        else:
+            y = temp1
+        temp2 = y.replace('POSSUM', 'PSM')
         if len(x) == 1:
             temp = f'{temp2}_{version}.fits'
         else:
             temp = f'{temp2}_{version}.fits{x[1]}'
+        # insert = f'PSM_{band}_{resolution}'
+        # temp2 = temp1.replace('PSM', insert)
+        # if len(x) == 1:
+        #     temp = f'{temp2}_{version}.fits'
+        # else:
+        #     temp = f'{temp2}_{version}.fits{x[1]}'
         self._stage_names.append(temp)
         return temp
 
@@ -187,16 +206,22 @@ class PossumName(StorageName):
     def set_obs_id(self):
         # picking the common prefix, e.g. 944MHz_pilot1_18asec_2226-5552_11268, and then re-organize it a bit
         # leave off the "PSM" because collection is POSSUM
+        self._logger.error(self._file_id)
         bits = self._file_id.split('_')
-        if len(bits) > 1:
+        if len(bits) > 2:
             if 'pilot' in self._file_id:
                 self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}_{bits[1]}'
                 self._healpix_index = bits[5]
                 self._spatial_resolution = float(bits[3].replace('asec', ''))
             else:
-                self._obs_id = f'{bits[1]}_{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}'
-                self._healpix_index = bits[4]
-                self._spatial_resolution = float(bits[2].replace('asec', ''))
+                if len(bits) == 8:
+                    self._obs_id = '_'.join(ii for ii in bits[1:-1])
+                    self._healpix_index = bits[-4]
+                    self._spatial_resolution = float(bits[2].replace('asec', ''))
+                else:
+                    self._obs_id = '_'.join(ii for ii in bits[1:])
+                    self._healpix_index = bits[-2]
+                    self._spatial_resolution = float(bits[2].replace('asec', ''))
         else:
             bits = self._file_id.split('.')
             self._obs_id = f'{bits[1]}_{bits[2]}'
@@ -204,10 +229,17 @@ class PossumName(StorageName):
 
     def set_product_id(self):
         bits = self._file_id.split('_')
-        if len(bits) > 1:
+        self._logger.error(self._file_id)
+        if len(bits) > 2:
             index = 5
             if 'pilot' in self._file_id:
                 index = 6
+            elif len(bits) == 7 and bits[-1] == 'v1':
+                self._logger.error(f'len bits {len(bits)} {self._file_id} {bits}')
+                index = 5
+            elif len(bits) == 8 and bits[-1] == 'v1':
+                index = 6
+            self._logger.error(f'index {index} {bits[index]}')
             if '_p3d_' in self._file_id:
                 self._product_id = '3d_pipeline'
             elif '_p1d_' in self._file_id:
@@ -226,14 +258,15 @@ class PossumName(StorageName):
                 raise CadcException(f'Unexpected file naming pattern {self._file_id}')
         else:
             bits = self._file_id.split('.')
-            if bits[3] == 'i':
+            index = 3
+            if self._file_id.startswith('POSSUM'):
+                index = 4
+            if bits[index] == 'i':
                 self._product_id = 'raw_i'
-            elif bits[3] == 'q' or bits[3] == 'u':
+            elif bits[index] == 'q' or bits[index] == 'u':
                 self._product_id = 'raw_qu'
-            elif bits[3] == 'w':
-                self._product_id = 'idk'
             else:
-                raise CadcException(f'Unexpected file naming pattern {self._file_id}')
+                raise CadcException(f'Unexpected raw file naming pattern {self._file_id}')
 
     def un_name(self):
         """Undo the renaming from Pawsey Acacia, to be able to work backwards for sc2 Observation metadata."""

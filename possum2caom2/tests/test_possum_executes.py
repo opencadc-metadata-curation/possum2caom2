@@ -126,7 +126,7 @@ def test_execution_unit_start_stop(test_config, tmp_path):
     test_subject.stop()
 
     test_files = listdir(tmp_path)
-    assert len(test_files) == 1, 'post-condition directory should exist'
+    assert len(test_files) == 0, 'post-condition empty directory should not exist'
 
 
 # need test_config parameter so StorageName.collection is set
@@ -137,7 +137,7 @@ def test_remote_metadata_reader_file_info_and_todo_reader(header_mock, md5_mock,
     md5_mock.return_value = 'abc'
 
     input_file = f'{test_data_dir}/storage_mock/rclone_lsjson.json'
-    test_file_uri = 'cadc:POSSUM/PSM.0049-51.10887.i.fits'
+    test_file_uri = 'cadc:POSSUM/PSM.band1.0049-51.10887.i.fits'
     test_subject = possum_execute.RemoteMetadataReader()
 
     with open(input_file) as f:
@@ -492,7 +492,7 @@ def test_remote_execution(
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = False
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
-    test_config.data_sources = ['test/acacia/possum1234']
+    test_config.data_sources = ['pawsey_test/acacia/possum1234']
     test_config.data_source_extensions = ['.fits', '.fits.header']
     test_config.logging_level = 'INFO'
     test_config.interval = 60 * 48  # work in time-boxes of 2 days => 60m * 48h
@@ -507,7 +507,7 @@ def test_remote_execution(
     file_mod_time = tomorrow + timedelta(minutes=1)
     def _exec_cmd_info_mock(arg1):
         assert arg1.startswith(
-            f'rclone lsjson test:acacia/possum1234 --max-age {tomorrow.timestamp()} --includes *'
+            f'rclone lsjson pawsey_test:acacia/possum1234 --max-age={tomorrow.isoformat()} --include=*[iqu].fits'
         ), f'exec_cmd_info {arg1}'
         return (
             f'[{{\"Path\":\"components/0049-51/survey/i/PSM.0049-51.10887.i.fits\",\"Name\":'
@@ -521,7 +521,7 @@ def test_remote_execution(
     )
     def _exec_cmd_mock(arg1):
         assert arg1.startswith(
-            f'rclone copy test:acacia/possum1234 {test_working_directory} --max-age {tomorrow.timestamp()} --min-age {file_mod_time.timestamp()} --includes'
+            f'rclone copy pawsey_test:acacia/possum1234 {test_working_directory} --max-age={tomorrow.isoformat()} --min-age={file_mod_time.isoformat()} --include='
         ), f'exec_cmd {arg1}'
     exec_cmd_mock.side_effect = _exec_cmd_mock
 
@@ -531,4 +531,64 @@ def test_remote_execution(
     assert clients_mock.metadata_client.mock_calls == [], f'client mock {clients_mock.metadata_client.mock_calls}'
     assert (
         clients_mock.server_side_ctor_client.mock_calls == []
+    ), f'client mock {clients_mock.server_side_ctor_client.mock_calls}'
+
+
+@patch('possum2caom2.fits2caom2_augmentation.visit')
+@patch('possum2caom2.possum_execute.RCloneClients')
+def test_remote_execute_with_local_commands(
+    clients_mock, visit_mock, test_config, test_data_dir, tmp_path, change_test_dir
+):
+    # execution path for local rclone
+    test_config.change_working_directory(tmp_path)
+    test_config.cleanup_files_when_storing = False
+    test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
+    test_config.data_sources = [f'{test_data_dir}/rclone_test']
+    test_config.data_source_extensions = ['.fits']
+    test_config.logging_level = 'INFO'
+    test_config.interval = 60 * 48  # work in time-boxes of 2 days => 60m * 48h
+    test_config.observe_execution = True
+    test_config.write_to_file(test_config)
+
+    # state
+    start_dt = datetime(2024, 4, 16, 16, 33, 0)
+    State.write_bookmark(test_config.state_fqn, test_config.data_sources[0], start_dt)
+    # TODO - add an end time to this test so it doesn't take increasingly long amounts of time
+    # 2024-04-16T18:40:58.751296025Z
+
+    # mock returns
+    # test_observation is purely for return values - it has nothing to do with the files from the test directory
+    test_observation = read_obs_from_file(f'{test_data_dir}/storage_mock/renaming_observation.xml')
+    # there are four test files
+    clients_mock.return_value.server_side_ctor_client.read.return_value = None
+    # clients_mock.return_value.server_side_ctor_client.read.side_effect = [
+    #     None, test_observation, None, test_observation, None, test_observation, None, test_observation
+    # ]
+    visit_mock.return_value = test_observation
+
+    test_result = possum_execute.remote_execution()
+    assert test_result == 0, 'expect success result'
+    assert clients_mock.return_value.data_client.put.call_count == 4, f'client mock {clients_mock.return_value.data_client.put.call_count}'
+    assert clients_mock.return_value.metadata_client.read.call_count == 4, f'metadata client call count'
+    assert clients_mock.return_value.metadata_client.update.call_count == 4, f'metadata client call count'
+    # assert clients_mock.return_value.metadata_client.mock_calls == [
+    #     call.read('POSSUM', '944MHz_20asec_0204-41_10187_q_v1'),
+    #     call.read().__sizeof__(),
+    #     call.read().observation_id.__str__,
+    #     call.update(ANY),
+    #     call.read('POSSUM', '944MHz_20asec_0204-41_10187_i_v1'),
+    #     call.read().__sizeof__,
+    #     call.read().observation_id.__str__,
+    #     call.update(ANY),
+    #     call.read('POSSUM', '1296MHz_20asec_1506-32A_1506-32B_9488_i_v1'),
+    #     call.read().__sizeof__,
+    #     call.read().observation_id.__str__,
+    #     call.update(ANY),
+    #     call.read('POSSUM', '944MHz_20asec_0204-41_10187_u_v1'),
+    #     call.read().__sizeof__,
+    #     call.read().observation_id.__str__,
+    #     call.update(ANY),
+    # ], f'client mock {clients_mock.return_value.metadata_client.mock_calls}'
+    assert (
+        clients_mock.return_value.server_side_ctor_client.mock_calls == []
     ), f'client mock {clients_mock.server_side_ctor_client.mock_calls}'

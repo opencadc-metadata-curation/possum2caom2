@@ -72,6 +72,7 @@ import os
 
 from astropy import units
 from copy import deepcopy
+from datetime import datetime
 
 from cadcdata.storageinv import FileInfo
 from caom2pipe.client_composable import ClientCollection, repo_create, repo_get, repo_update
@@ -104,11 +105,10 @@ class RCloneClients(ClientCollection):
 
     def __init__(self, config):
         super().__init__(config)
-        self._config = config
         # TODO rclone credentials
         self._rclone_client = None
         self._server_side_ctor_client = CAOM2RepoClient(
-            self._subject, self._config.logging_level, self._config.server_side_resource_id
+            self._subject, config.logging_level, config.server_side_resource_id
         )
 
     @property
@@ -173,9 +173,14 @@ class RemoteMetadataReader(FileMetadataReader):
         content = json.loads(storage_name)
         for entry in content:
             name = entry.get('Name')
-            if name.startswith('PSM') and '.fits' in name:
+            # if name.startswith('PSM') or '.fits' in name:
+            if '.fits' in name:
                 # keys are destination URIs
-                possum_name = PossumName(name)
+                try:
+                    possum_name = PossumName(name)
+                except CadcException as e:
+                    self._logger.error(e)
+                    continue
                 if possum_name.file_uri not in self._file_info:
                     self._logger.debug(f'Retrieve FileInfo for {possum_name.file_uri}')
                     self._file_info[possum_name.file_uri] = FileInfo(
@@ -226,7 +231,10 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         self._metadata_reader = metadata_reader
         self._kwargs = kwargs
         # adjust config file syntax for the data sources, which was done so it would work with basic yaml
-        self._remote_key = start_key.replace('/', ':', 1)
+        if 'pawsey' in start_key:
+            self._remote_key = start_key.replace('/', ':', 1)
+        else:
+            self._remote_key = start_key
 
     def _capture_todo(self):
         self._reporter.capture_todo(len(self._metadata_reader.file_info), self._rejected_files, self._skipped_files)
@@ -238,11 +246,19 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         self._logger.debug('Begin _initialize_end_dt')
         end_timestamp = self._state.bookmarks.get(self._start_key).get('end_timestamp')
         if end_timestamp is None:
-            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --min-age {self._start_dt.timestamp()} --include {self._data_source_extensions}')
+            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --max-age={self._start_dt.isoformat()} --include={self._data_source_extensions}')
         else:
-            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --min-age {self._start_dt.timestamp()} --max-age {end_timestamp} --include {self._data_source_extensions}')
+            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --max-age={self._start_dt.isoformat()} --min-age={end_timestamp.isoformat()} --include={self._data_source_extensions}')
+
+        self._logger.error(output)
         self._metadata_reader.set_file_info(output)
-        self._end_dt = self._metadata_reader.max_dt
+        if self._metadata_reader.max_dt:
+            self._end_dt = self._metadata_reader.max_dt
+        else:
+            if end_timestamp:
+                self._end_dt = make_datetime(end_timestamp)
+            else:
+                self._end_dt = datetime.now()
         self._capture_todo()
         self._logger.debug(f'End _initialize_end_dt with {self._end_dt}')
 
@@ -257,8 +273,8 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         # --max-age  -> only transfer files younger than this in s
         # --min-age -> only transfer files older than this in s
         exec_cmd(
-            f'rclone copy {self._remote_key} {execution_unit.working_directory} --min-age {prev_exec_dt.timestamp()} '
-            f'--max-age {exec_dt.timestamp()} --include {self._data_source_extensions}'
+            f'rclone copy {self._remote_key} {execution_unit.working_directory} --max-age={prev_exec_dt.isoformat()} '
+            f'--min-age={exec_dt.isoformat()} --include={self._data_source_extensions}'
         )
         execution_unit.num_entries, execution_unit.entry_dt = self._metadata_reader.get_time_box_work_parameters(prev_exec_dt, exec_dt)
         if execution_unit.num_entries == 0:
@@ -324,6 +340,7 @@ class ExecutionUnitStateRunner(StateRunner):
         data_source.initialize_end_dt()
         prev_exec_time = data_source.start_dt
         incremented = increment_time(prev_exec_time, self._config.interval)
+        self._logger.error(f'incremented {incremented} end {data_source.end_dt}')
         exec_time = min(incremented, data_source.end_dt)
 
         self._logger.info(f'Starting at {prev_exec_time}, ending at {data_source.end_dt}')
@@ -507,10 +524,14 @@ class ExecutionUnit:
         """Remove a directory and all its contents. Only do this if there is not a 'SCRAPE' task type, since the
         point of scraping is to be able to look at the pipeline execution artefacts once the processing is done.
         """
-        if os.path.exists(self._working_directory) and TaskType.SCRAPE not in self._task_types and self._config.cleanup_files_when_storing:
-            for ii in os.listdir(self._working_directory):
-                os.remove(os.path.join(self._working_directory, ii))
-            os.rmdir(self._working_directory)
+        # if os.path.exists(self._working_directory) and TaskType.SCRAPE not in self._task_types and self._config.cleanup_files_when_storing:
+        if os.path.exists(self._working_directory) and TaskType.SCRAPE not in self._task_types:
+            entries = os.listdir(self._working_directory)
+            if (self._config.cleanup_files_when_storing and len(entries) > 0) or len(entries) == 0:
+                for ii in os.listdir(self._working_directory):
+                    os.remove(os.path.join(self._working_directory, ii))
+                self._logger.error(f'removing {self._working_directory}')
+                os.rmdir(self._working_directory)
             self._logger.debug(f'Removed working directory {self._working_directory} and contents.')
         self._logger.debug('End _clean_up_workspace')
 
@@ -535,71 +556,72 @@ class ExecutionUnit:
                     found_storage_name = storage_name
                     break
             self._remote_metadata_reader.set_headers(found_storage_name, self._working_directory)
-            found_observation = False
-            central_wavelength = self._central_wavelengths.get(found_storage_name.obs_id)
-            if not central_wavelength:
-                self._logger.info(f'Building a temp record for {found_storage_name.file_uri}')
-                # create a CAOM2 record
-                kwargs = {
-                    'working_directory': self._working_directory,
-                    'config': self._config,
-                    'clients': self._clients,
-                    'storage_name': found_storage_name,
-                    'metadata_reader': self._remote_metadata_reader,
-                    'observable': self._observable,
-                }
-                observation = repo_get(
-                    self._clients.server_side_ctor_client,
-                    found_storage_name.collection,
-                    found_storage_name.obs_id,
-                    self._observable.metrics,
-                )
-                if observation:
-                    found_observation = True
-                for visitor in META_VISITORS:
-                    observation = visitor.visit(observation, **kwargs)
-                if observation:
-                    # post it to sc2
-                    if found_observation:
-                        repo_update(
-                            self._clients.server_side_ctor_client,
-                            observation,
-                            self._observable.metrics,
-                        )
-                    else:
-                        repo_create(
-                            self._clients.server_side_ctor_client,
-                            observation,
-                            self._observable.metrics,
-                        )
-                    # read it back
-                    observation = repo_get(
-                        self._clients.server_side_ctor_client,
-                        found_storage_name.collection,
-                        found_storage_name.obs_id,
-                        self._observable.metrics,
-                    )
-                    # calculate central wavelength
-                    plane = observation.planes[found_storage_name.product_id]
-                    min_wavelength = (
-                        plane.energy.bounds.lower * units.meter
-                    ).to(units.MHz, equivalencies=units.spectral())
-                    max_wavelength = (
-                        plane.energy.bounds.upper * units.meter
-                    ).to(units.MHz, equivalencies=units.spectral())
-                    central = min_wavelength + ( min_wavelength - max_wavelength ) / 2
-                    central_wavelength = f'{round(central.value)}MHz'.strip()
-                    self._logger.info(
-                        f'Found central wavelength of {central_wavelength} for {found_storage_name.obs_id}'
-                    )
-                    self._central_wavelengths[found_storage_name.obs_id] = central_wavelength
-                    self._observations[found_storage_name.obs_id] = observation
-                    # keep the least amount of necessary metadata in memory
-                    while len(plane.artifacts) > 0:
-                        plane.artifacts.pop()
-                else:
-                    self._logger.error(f'No Observation for {found_storage_name.file_name}')
-            found_storage_name.rename(central_wavelength)
+            # found_observation = False
+            # central_wavelength = self._central_wavelengths.get(found_storage_name.obs_id)
+            # if not central_wavelength:
+            #     self._logger.info(f'Building a temp record for {found_storage_name.file_uri}')
+            #     # create a CAOM2 record
+            #     kwargs = {
+            #         'working_directory': self._working_directory,
+            #         'config': self._config,
+            #         'clients': self._clients,
+            #         'storage_name': found_storage_name,
+            #         'metadata_reader': self._remote_metadata_reader,
+            #         'observable': self._observable,
+            #     }
+            #     observation = repo_get(
+            #         self._clients.server_side_ctor_client,
+            #         found_storage_name.collection,
+            #         found_storage_name.obs_id,
+            #         self._observable.metrics,
+            #     )
+            #     if observation:
+            #         found_observation = True
+            #     for visitor in META_VISITORS:
+            #         observation = visitor.visit(observation, **kwargs)
+            #     if observation:
+            #         # post it to sc2
+            #         if found_observation:
+            #             repo_update(
+            #                 self._clients.server_side_ctor_client,
+            #                 observation,
+            #                 self._observable.metrics,
+            #             )
+            #         else:
+            #             repo_create(
+            #                 self._clients.server_side_ctor_client,
+            #                 observation,
+            #                 self._observable.metrics,
+            #             )
+            #         # read it back
+            #         observation = repo_get(
+            #             self._clients.server_side_ctor_client,
+            #             found_storage_name.collection,
+            #             found_storage_name.obs_id,
+            #             self._observable.metrics,
+            #         )
+            #         # calculate central wavelength
+            #         plane = observation.planes[found_storage_name.product_id]
+            #         min_wavelength = (
+            #             plane.energy.bounds.lower * units.meter
+            #         ).to(units.MHz, equivalencies=units.spectral())
+            #         max_wavelength = (
+            #             plane.energy.bounds.upper * units.meter
+            #         ).to(units.MHz, equivalencies=units.spectral())
+            #         central = min_wavelength + ( min_wavelength - max_wavelength ) / 2
+            #         central_wavelength = f'{round(central.value)}MHz'.strip()
+            #         self._logger.info(
+            #             f'Found central wavelength of {central_wavelength} for {found_storage_name.obs_id}'
+            #         )
+            #         self._central_wavelengths[found_storage_name.obs_id] = central_wavelength
+            #         self._observations[found_storage_name.obs_id] = observation
+            #         # keep the least amount of necessary metadata in memory
+            #         while len(plane.artifacts) > 0:
+            #             plane.artifacts.pop()
+            #     else:
+            #         self._logger.error(f'No Observation for {found_storage_name.file_name}')
+            # found_storage_name.rename(central_wavelength)
+            found_storage_name.rename('')
             fqn = os.path.join(self._working_directory, found_storage_name.file_name)
             renamed_fqn = os.path.join(self._working_directory, found_storage_name.stage_names[0])
             os.rename(fqn, renamed_fqn)

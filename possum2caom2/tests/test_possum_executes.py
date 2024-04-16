@@ -81,6 +81,18 @@ from caom2pipe.manage_composable import State, TaskType
 from mock import ANY, call, Mock, patch, PropertyMock
 
 
+def test_renaming_options():
+    tests = {
+        'POSSUM.band1.0204-41.10187.i.fits': 'PSM_944MHz_20asec_0204-4100_10187_i_v1.fits',
+        'POSSUM.mfs.band1.0144-46_0214-46_0204-41.10314.i.fits': 'PSM_944MHz_20asec_0144-4600_0214-4600_0204-4100_10314_i_v1.fits',
+        'POSSUM.mfs.band1.0144+46_0214+46_0204-41.10314.i.fits': 'PSM_944MHz_20asec_0144+4600_0214+4600_0204-4100_10314_i_v1.fits',
+        # TODO 'POSSUM.mfs.band1.1336-04A_1336-04B_1315-04B_1315-04A.6663.i.fits'
+    }
+    for original, renamed in tests.items():
+        test_subject = storage_name.PossumName(original)
+        assert test_subject.rename('') == renamed, f'wrong renamed {original}\n{test_subject.rename("")}\n{renamed}'
+
+
 def test_execution_unit_start_stop(test_config, tmp_path):
     kwargs = {
         'clients': None,

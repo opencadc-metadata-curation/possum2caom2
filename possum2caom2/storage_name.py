@@ -159,15 +159,33 @@ class PossumName(StorageName):
 
     def rename(self, band, version='v1', resolution='20asec'):
         if 'asec' in self._file_id:
-            self._logger.error('second time through')
+            self._logger.info(f'{self._file_id} has already been renamed.')
             return self._file_name
         self._logger.error(self._file_name)
         # Jennifer West, 08-04-24
         # band1 == 944MHz, band2 == 1296MHz
         # is version == v1
         # resolution == 20asec
+        # Jennifer West 16-04-24
+        # make the coordinates 8 digits => XXXX-XXXX
         x = self._file_name.split('.fits')
         bits = x[0].split('.')
+        for index, bit in enumerate(bits):
+            if '-' in bit or '+' in bit:
+                teeny_bits = bit.split('_')
+                for teeny_index, teeny_bit in enumerate(teeny_bits):
+                    marker = None
+                    if '-' in teeny_bit:
+                        teenier_bits = teeny_bit.split('-')
+                        marker = '-'
+                    elif '+' in teeny_bit:
+                        teenier_bits = teeny_bit.split('+')
+                        marker = '+'
+                    for ii in [0, 1]:
+                        if len(teenier_bits[ii]) != 4:
+                            teenier_bits[ii] = f'{teenier_bits[ii]:04}'
+                    teeny_bits[teeny_index] = f'{teenier_bits[0]}{marker}{teenier_bits[1]}'
+                bits[index] = '_'.join(jj for jj in teeny_bits)
         temp1 = '_'.join(ii for ii in bits)
         if 'band1' in self._file_name:
             y = temp1.replace('band1', f'944MHz_{resolution}')
@@ -175,17 +193,11 @@ class PossumName(StorageName):
             y = temp1.replace('band2', f'1296MHz_{resolution}')
         else:
             y = temp1
-        temp2 = y.replace('POSSUM', 'PSM')
+        temp2 = y.replace('POSSUM', 'PSM').replace('mfs_', '')
         if len(x) == 1:
             temp = f'{temp2}_{version}.fits'
         else:
             temp = f'{temp2}_{version}.fits{x[1]}'
-        # insert = f'PSM_{band}_{resolution}'
-        # temp2 = temp1.replace('PSM', insert)
-        # if len(x) == 1:
-        #     temp = f'{temp2}_{version}.fits'
-        # else:
-        #     temp = f'{temp2}_{version}.fits{x[1]}'
         self._stage_names.append(temp)
         return temp
 
@@ -208,7 +220,7 @@ class PossumName(StorageName):
         # leave off the "PSM" because collection is POSSUM
         self._logger.error(self._file_id)
         bits = self._file_id.split('_')
-        if len(bits) > 2:
+        if len(bits) > 3:
             if 'pilot' in self._file_id:
                 self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}_{bits[1]}'
                 self._healpix_index = bits[5]
@@ -223,14 +235,19 @@ class PossumName(StorageName):
                     self._healpix_index = bits[-2]
                     self._spatial_resolution = float(bits[2].replace('asec', ''))
         else:
-            bits = self._file_id.split('.')
-            self._obs_id = f'{bits[1]}_{bits[2]}'
-            self._healpix_index = bits[2]
+            if 'mfs' in self._file_id:
+                self._obs_id = '_'.join(ii for ii in bits[1:-1])
+                self._healpix_index = bits[-2]
+                self._spatial_resolution = None
+            else:
+                bits = self._file_id.split('.')
+                self._obs_id = f'{bits[1]}_{bits[2]}'
+                self._healpix_index = bits[2]
 
     def set_product_id(self):
         bits = self._file_id.split('_')
         self._logger.error(self._file_id)
-        if len(bits) > 2:
+        if len(bits) > 3:
             index = 5
             if 'pilot' in self._file_id:
                 index = 6
@@ -239,7 +256,6 @@ class PossumName(StorageName):
                 index = 5
             elif len(bits) == 8 and bits[-1] == 'v1':
                 index = 6
-            self._logger.error(f'index {index} {bits[index]}')
             if '_p3d_' in self._file_id:
                 self._product_id = '3d_pipeline'
             elif '_p1d_' in self._file_id:
@@ -258,14 +274,17 @@ class PossumName(StorageName):
                 raise CadcException(f'Unexpected file naming pattern {self._file_id}')
         else:
             bits = self._file_id.split('.')
-            index = 3
-            if self._file_id.startswith('POSSUM'):
-                index = 4
-            if bits[index] == 'i':
-                self._product_id = 'raw_i'
-            elif bits[index] == 'q' or bits[index] == 'u':
-                self._product_id = 'raw_qu'
+            if 'mfs' in self._file_id:
+                self._product_id = f'multifrequencysynthesis_{bits[-1]}'
             else:
+                index = 3
+                if self._file_id.startswith('POSSUM'):
+                    index = 4
+                if bits[index] == 'i':
+                    self._product_id = 'raw_i'
+                elif bits[index] == 'q' or bits[index] == 'u':
+                    self._product_id = 'raw_qu'
+            if self._product_id is None:
                 raise CadcException(f'Unexpected raw file naming pattern {self._file_id}')
 
     def un_name(self):

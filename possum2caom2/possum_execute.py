@@ -104,6 +104,7 @@ class RCloneClients(ClientCollection):
 
     def __init__(self, config):
         super().__init__(config)
+        self._config = config
         # TODO rclone credentials
         self._rclone_client = None
         self._server_side_ctor_client = CAOM2RepoClient(
@@ -220,7 +221,8 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
 
     def __init__(self, config, start_key, metadata_reader, **kwargs):
         super().__init__(config, start_key)
-        self._data_source_extensions = ' '.join(f'*{ii}' for ii in config.data_source_extensions)
+        # self._data_source_extensions = ' '.join(f'*{ii}' for ii in config.data_source_extensions)
+        self._data_source_extensions = '*[iqu].fits'
         self._metadata_reader = metadata_reader
         self._kwargs = kwargs
         # adjust config file syntax for the data sources, which was done so it would work with basic yaml
@@ -234,7 +236,11 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
 
     def _initialize_end_dt(self):
         self._logger.debug('Begin _initialize_end_dt')
-        output = exec_cmd_info(f'rclone lsjson {self._remote_key} --max-age {self._start_dt.timestamp()} --includes {self._data_source_extensions}')
+        end_timestamp = self._state.bookmarks.get(self._start_key).get('end_timestamp')
+        if end_timestamp is None:
+            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --min-age {self._start_dt.timestamp()} --include {self._data_source_extensions}')
+        else:
+            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --min-age {self._start_dt.timestamp()} --max-age {end_timestamp} --include {self._data_source_extensions}')
         self._metadata_reader.set_file_info(output)
         self._end_dt = self._metadata_reader.max_dt
         self._capture_todo()
@@ -251,8 +257,8 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         # --max-age  -> only transfer files younger than this in s
         # --min-age -> only transfer files older than this in s
         exec_cmd(
-            f'rclone copy {self._remote_key} {execution_unit.working_directory} --max-age {prev_exec_dt.timestamp()} '
-            f'--min-age {exec_dt.timestamp()} --includes {self._data_source_extensions}'
+            f'rclone copy {self._remote_key} {execution_unit.working_directory} --min-age {prev_exec_dt.timestamp()} '
+            f'--max-age {exec_dt.timestamp()} --include {self._data_source_extensions}'
         )
         execution_unit.num_entries, execution_unit.entry_dt = self._metadata_reader.get_time_box_work_parameters(prev_exec_dt, exec_dt)
         if execution_unit.num_entries == 0:

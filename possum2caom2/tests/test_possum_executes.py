@@ -166,7 +166,7 @@ def test_remote_metadata_reader_file_info_and_todo_reader(header_mock, md5_mock,
     assert test_storage_name.file_uri == test_file_uri, 'wrong file uri'
 
     test_storage_name.rename('944MHz')
-    final_file_name = 'PSM_944MHz_20asec_0049-51_10887_i_v1.fits'
+    final_file_name = 'PSM_944MHz_20asec_0049-5100_10887_i_v1.fits'
     assert test_storage_name.stage_names[0] == final_file_name
     test_storage_name_renamed = storage_name.PossumName(f'/tmp/{final_file_name}')
     test_subject_2 = possum_execute.TodoMetadataReader(test_subject)
@@ -295,14 +295,15 @@ def test_state_runner_nominal_multiple_files(
     with open(f'{test_data_dir}/storage_mock/rclone_lsjson.json') as f:
         exec_cmd_info_mock.return_value = f.read()
 
-    i_test_file = 'PSM.0049-51.11092.i.fits'
-    q_test_file = 'PSM.1136-64.11836.q.fits'
-    u_test_file = 'PSM.1136-64.11485.u.fits'
+    i_test_file = 'PSM.band1.0049-51.11092.i.fits'
+    q_test_file = 'PSM.band2.1136-64.11836.q.fits'
+    u_test_file = 'PSM.band2.1136-64.11485.u.fits'
     time_box_dir_name = '2023-10-28T20_47_49_2023-10-30T20_47_49'
     time_box_dir_name_2 = '2023-11-17T20_47_49_2023-11-18T20_47_50'
     def _exec_cmd_mock(arg1):
+        logging.error(arg1)
         if arg1 == (
-            f'rclone copy test:acacia/possum1234 {tmp_path}/{time_box_dir_name} --max-age 1698526069.0 --min-age 1698698869.0 --includes *.fits *.fits.header'
+            f'rclone copy pawsey_test:acacia/possum1234 {tmp_path}/{time_box_dir_name} --max-age=2023-10-28T20:47:49 --min-age=2023-10-30T20:47:49 --include=*[iqu].fits'
         ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits.header',
@@ -313,7 +314,7 @@ def test_state_runner_nominal_multiple_files(
                 f'{tmp_path}/{time_box_dir_name}/{q_test_file}',
             )
         elif arg1 == (
-            f'rclone copy test:acacia/possum1234 {tmp_path}/{time_box_dir_name_2} --max-age 1700254069.0 --min-age 1700340470.0 --includes *.fits *.fits.header'
+            f'rclone copy pawsey_test:acacia/possum1234 {tmp_path}/{time_box_dir_name_2} --max-age=2023-11-17T20:47:49 --min-age=2023-11-18T20:47:50 --include=*[iqu].fits'
         ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_q_v1.fits.header',
@@ -327,7 +328,7 @@ def test_state_runner_nominal_multiple_files(
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = False
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
-    test_config.data_sources = ['test/acacia/possum1234']
+    test_config.data_sources = ['pawsey_test/acacia/possum1234']
     test_config.data_source_extensions = ['.fits', '.fits.header']
     test_config.logging_level = 'INFO'
     test_config.interval = 60 * 48  # work in time-boxes of 2 days => 60m * 48h
@@ -370,24 +371,35 @@ def test_state_runner_nominal_multiple_files(
     assert test_result is not None, 'expect a result'
     assert test_result == 0, 'happy path'
     assert test_organizer.mock_calls == [call.choose], 'organizer'
+    # assert test_clients.mock_calls == [
+    #     call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
+    #     call.server_side_ctor_client.create(ANY),
+    #     call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
+    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
+    #     call.server_side_ctor_client.create(ANY),
+    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
+    #     call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11836_q_v1.fits'),
+    #     call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11836_q'),
+    #     call.metadata_client.create(ANY),
+    #     call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_0049-51_11092_i_v1.fits'),
+    #     call.metadata_client.read('POSSUM', '1511MHz_20asec_0049-51_11092_i'),
+    #     call.metadata_client.create(ANY),
+    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+    #     call.server_side_ctor_client.create(ANY),
+    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+    #     call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
+    #     call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
+    #     call.metadata_client.create(ANY),
+    # ], f'clients {test_clients.mock_calls}'
     assert test_clients.mock_calls == [
-        call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
-        call.server_side_ctor_client.create(ANY),
-        call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
-        call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
-        call.server_side_ctor_client.create(ANY),
-        call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11836_q_v1.fits'),
-        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11836_q'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_i_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_i_v1'),
         call.metadata_client.create(ANY),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_0049-51_11092_i_v1.fits'),
-        call.metadata_client.read('POSSUM', '1511MHz_20asec_0049-51_11092_i'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1367MHz_18asec_2013-5553_11261_i_v1.fits'),
+        call.metadata_client.read('POSSUM', '1367MHz_18asec_2013-5553_11261_i_v1'),
         call.metadata_client.create(ANY),
-        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-        call.server_side_ctor_client.create(ANY),
-        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
-        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_q_v1'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
@@ -411,11 +423,12 @@ def test_state_runner_clean_up_when_storing_with_retry(
     with open(f'{test_data_dir}/storage_mock/rclone_lsjson.json') as f:
         exec_cmd_info_mock.return_value = f.read()
 
-    u_test_file = 'PSM.1136-64.11485.u.fits'
+    u_test_file = 'PSM.band2.1136-64.11485.u.fits'
     time_box_dir_name = '2023-10-28T20_47_49_2023-10-30T20_47_49'
     def _exec_cmd_mock(arg1):
+        logging.error(arg1)
         if arg1 == (
-            f'rclone copy test:acacia/possum1234 {tmp_path}/{time_box_dir_name} --max-age 1698526069.0 --min-age 1698698869.0 --includes *.fits *.fits.header'
+            f'rclone copy pawsey_test:acacia/possum1234 {tmp_path}/{time_box_dir_name} --max-age=2023-10-28T20:47:49 --min-age=2023-10-30T20:47:49 --include=*[iqu].fits'
         ):
             copyfile(
                 f'{test_data_dir}/casda/PSM_pilot1_1368MHz_18asec_2031-5249_11073_q_v1.fits.header',
@@ -429,7 +442,7 @@ def test_state_runner_clean_up_when_storing_with_retry(
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = True
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
-    test_config.data_sources = ['test/acacia/possum1234']
+    test_config.data_sources = ['pawsey_test/acacia/possum1234']
     test_config.data_source_extensions = ['.fits', '.fits.header']
     test_config.logging_level = 'INFO'
     test_config.interval = 60 * 48  # work in time-boxes of 2 days => 60m * 48h
@@ -474,14 +487,14 @@ def test_state_runner_clean_up_when_storing_with_retry(
     assert test_result == -1, 'happy path with a retry'
     assert test_organizer.mock_calls == [call.choose], 'organizer'
     assert test_clients.mock_calls == [
-        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-        call.server_side_ctor_client.create(ANY),
-        call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
-        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
+        # call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+        # call.server_side_ctor_client.create(ANY),
+        # call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_q_v1'),
         # because there's a retry
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
-        call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_q_v1'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'

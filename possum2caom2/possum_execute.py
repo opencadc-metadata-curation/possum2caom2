@@ -71,6 +71,10 @@ import logging
 import os
 
 from astropy import units
+from astropy.coordinates import SkyCoord
+from astropy.io import fits
+from astropy.wcs import WCS
+from astropy_healpix import HEALPix
 from copy import deepcopy
 from datetime import datetime
 
@@ -198,7 +202,7 @@ class RemoteMetadataReader(FileMetadataReader):
 
     def set_headers(self, storage_name, working_directory):
         self._logger.debug(f'Begin set_headers for {storage_name.file_name}')
-        for index, entry in enumerate(storage_name.destination_uris):
+        for entry in storage_name.destination_uris:
             if entry not in self._headers:
                 self._logger.debug(f'Retrieve headers for {entry}')
                 self._retrieve_headers(entry, os.path.join(working_directory, os.path.basename(entry)))
@@ -226,8 +230,7 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
 
     def __init__(self, config, start_key, metadata_reader, **kwargs):
         super().__init__(config, start_key)
-        # self._data_source_extensions = ' '.join(f'*{ii}' for ii in config.data_source_extensions)
-        self._data_source_extensions = '*[iqu].fits'
+        self._data_source_extensions = config.lookup.get('rclone_include_pattern')
         self._metadata_reader = metadata_reader
         self._kwargs = kwargs
         # adjust config file syntax for the data sources, which was done so it would work with basic yaml
@@ -535,6 +538,166 @@ class ExecutionUnit:
             self._logger.debug(f'Removed working directory {self._working_directory} and contents.')
         self._logger.debug('End _clean_up_workspace')
 
+    def _find_new_file_name(self, hdr, mfs):
+    # def name(fitsimage, prefix, version="v1", mfs=False):
+        """
+        Algorithm from @Sebokolodi and @Cameron-Van-Eck (github).
+        Setting up the name to be used for tiles. The script reads the bmaj and stokes from the fits header. The
+        rest of the parameters are flexible to change.
+
+        fitsimage: tile image
+        prefix   : prefix to use. E.g. PSM for full survey,
+                PSM_pilot1 for POSSUM pilot 1
+                PSM_pilot2 for POSSUM pilot 2
+        tileID   : tile pixel (Healpix pixel)
+
+        version  : version of the output product. Version 1 is v1, version is v2,
+                and so forth.
+
+        """
+
+        self._logger.debug('Begin _find_new_file_name')
+        result = None
+        # hdr = fits.getheader(fitsimage)
+
+        # get bmaj.
+        bmaj = round(hdr.get('BMAJ') * 3600.0)
+        if bmaj:
+            bmaj =  f'{bmaj:2d}asec'
+
+        # extract stokes parameter. It can be in either the 3rd or fourth axis.
+
+        if hdr.get('CTYPE3') == 'STOKES':
+            stokes = hdr.get('CRVAL3')
+            # if Stokes is axis 3, then frequency is axis 4.
+            freq0 = hdr.get('CRVAL4')
+            dfreq = hdr.get('CDELT4')
+            N = hdr.get('naxis4')
+            if N and N > 1:
+                cenfreq = round((freq0 + (freq0 + N * dfreq))/(2.0 * 1e6))
+            else:
+                cenfreq = round(freq0/1e6)
+
+
+        elif hdr.get('CTYPE4') == 'STOKES':
+            stokes = hdr.get('CRVAL4')
+            # if Stokes is axis 4, then frequency is axis 3. If we have >4 axis, the script will fail.
+            freq0 = hdr.get('CRVAL3')
+            dfreq = hdr.get('CDELT3')
+            N = hdr.get('naxis3')
+            if N and N > 1:
+                cenfreq = round((freq0 + (freq0 + N * dfreq))/(2.0 * 1e6))
+            else:
+                cenfreq = round(freq0/1e6)
+
+        else:
+            # sys.exit(">>> Cannot find Stokes axis on the 3rd/4th axis")
+            return None
+
+        cenfreq = f'{round(cenfreq)}MHz'
+
+        # stokes I=1, Q=2, U=3 and 4=V
+        if int(stokes) == 1:
+            stokesid = 'i'
+
+        elif int(stokes) == 2:
+            stokesid = 'q'
+
+        elif int(stokes) == 3:
+            stokesid = 'u'
+
+        elif int(stokes) == 4:
+            stokesid = 'v'
+
+        self._logger.info('Define healpix grid for nside 32')
+        # define the healpix grid
+        hp = HEALPix(nside=32, order="ring", frame="icrs")
+
+        # read the image crpix1 and crpix2 to determine the tile ID, and coordinates in degrees.
+        naxis = hdr.get('naxis1')
+        cdelt = abs(hdr.get('cdelt1'))
+        hpx_ref_hdr = self._reference_header(naxis=naxis, cdelt=cdelt)
+        # hpx_ref_hdr = fits.Header.fromstring("""%s"""%hpx_ref_hdr, sep='\n')
+        hpx_ref_wcs = WCS(hpx_ref_hdr)
+
+        crpix1 = hdr.get('crpix1')
+        crpix2 = hdr.get('crpix2')
+        crval1, crval2 = hpx_ref_wcs.wcs_pix2world(-crpix1, -crpix2 , 0)
+        tileID = hp.lonlat_to_healpix(crval1 * units.deg, crval2 * units.deg, return_offsets=False)
+        tileID = tileID - 1 #shifts by 1.
+
+        # extract the RA and DEC for a specific pixel
+        center = hp.healpix_to_lonlat(tileID) * units.deg
+        RA, DEC = center.value
+
+        self._logger.info(f'Derived RA is {RA} degrees and DEC is {DEC} degrees')
+        c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')
+
+        h, hm, hs = c.ra.hms
+        hmhs = round(hm + (hs / 60.0))
+        hmhs = str(hmhs).zfill(2)
+        hm = f'{int(h):02d}{hmhs}'
+
+        d, dm, _ = c.dec.dms
+        # if dec is in the southern sky leave as is. If northen add a +.
+        dmds = round(abs(dm) + (abs(dm) / 60.0))
+        dmds = str(dmds).zfill(2)
+        dm = f'{int(d):02d}{dmds}'
+        if (c.dec < 0) and (dm[0] != '-'):
+            dm = '-'+dm
+        if c.dec > 0:
+            dm = '+' + dm
+
+        # RADEC = f'{hm}{dm}'
+
+        if mfs:
+            outname = (
+                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hm}{dm}_{tileID}_t0_{stokesid}_'
+                f'{self._config.lookup.get('rename_version')}.fits'
+            )
+        else:
+            outname = (
+                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hm}{dm}_{tileID}_{stokesid}_'
+                f'{self._config.lookup.get('rename_version')}.fits'
+            )
+
+        # os.system('mv %s %s'%(fitsimage, outname))
+        return outname
+
+    def _reference_header(self, naxis, cdelt):
+        """
+        This is important as it allows us to properly determine correct pixel central pixel anywhere within the grid.
+
+        NB: We use this header to convert the crpix1/2 in the header to tile ID, then degrees.
+
+        :param cdelt the pixel size of the image in the grid. Must be the same as the one used for tiling.
+        :param naxis number of pixels within each axis.
+        """
+        d = {
+            'SIMPLE': 'T',
+            'BITPIX': -32,
+            'NAXIS': 2,
+            'NAXIS1': naxis,
+            'NAXIS2': naxis,
+            'EXTEND': 'F',
+            'CRPIX1': (naxis/2.0),
+            'CRPIX2': (naxis/2.0) + 0.5,
+            'PC1_1': 0.70710677,
+            'PC1_2': 0.70710677,
+            'PC2_1': -0.70710677,
+            'PC2_2': 0.70710677,
+            'CDELT1': -1 * cdelt,
+            'CDELT2': cdelt,
+            'CTYPE1': 'RA---HPX',
+            'CTYPE2': 'DEC--HPX',
+            'CRVAL1': 0.,
+            'CRVAL2': 0.,
+            'PV2_1': 4,
+            'PV2_2': 3,
+        }
+        return fits.Header(d)
+
+
     def _rename(self):
         """The files from Pawsey need to be renamed. Some of the metadata to rename the files is most easily found
         in the plane-level metadata that is calculated server-side.
@@ -555,78 +718,91 @@ class ExecutionUnit:
                 if storage_name.file_name == file_name:
                     found_storage_name = storage_name
                     break
+
             self._remote_metadata_reader.set_headers(found_storage_name, self._working_directory)
-            # found_observation = False
-            # central_wavelength = self._central_wavelengths.get(found_storage_name.obs_id)
-            # if not central_wavelength:
-            #     self._logger.info(f'Building a temp record for {found_storage_name.file_uri}')
-            #     # create a CAOM2 record
-            #     kwargs = {
-            #         'working_directory': self._working_directory,
-            #         'config': self._config,
-            #         'clients': self._clients,
-            #         'storage_name': found_storage_name,
-            #         'metadata_reader': self._remote_metadata_reader,
-            #         'observable': self._observable,
-            #     }
-            #     observation = repo_get(
-            #         self._clients.server_side_ctor_client,
-            #         found_storage_name.collection,
-            #         found_storage_name.obs_id,
-            #         self._observable.metrics,
-            #     )
-            #     if observation:
-            #         found_observation = True
-            #     for visitor in META_VISITORS:
-            #         observation = visitor.visit(observation, **kwargs)
-            #     if observation:
-            #         # post it to sc2
-            #         if found_observation:
-            #             repo_update(
-            #                 self._clients.server_side_ctor_client,
-            #                 observation,
-            #                 self._observable.metrics,
-            #             )
-            #         else:
-            #             repo_create(
-            #                 self._clients.server_side_ctor_client,
-            #                 observation,
-            #                 self._observable.metrics,
-            #             )
-            #         # read it back
-            #         observation = repo_get(
-            #             self._clients.server_side_ctor_client,
-            #             found_storage_name.collection,
-            #             found_storage_name.obs_id,
-            #             self._observable.metrics,
-            #         )
-            #         # calculate central wavelength
-            #         plane = observation.planes[found_storage_name.product_id]
-            #         min_wavelength = (
-            #             plane.energy.bounds.lower * units.meter
-            #         ).to(units.MHz, equivalencies=units.spectral())
-            #         max_wavelength = (
-            #             plane.energy.bounds.upper * units.meter
-            #         ).to(units.MHz, equivalencies=units.spectral())
-            #         central = min_wavelength + ( min_wavelength - max_wavelength ) / 2
-            #         central_wavelength = f'{round(central.value)}MHz'.strip()
-            #         self._logger.info(
-            #             f'Found central wavelength of {central_wavelength} for {found_storage_name.obs_id}'
-            #         )
-            #         self._central_wavelengths[found_storage_name.obs_id] = central_wavelength
-            #         self._observations[found_storage_name.obs_id] = observation
-            #         # keep the least amount of necessary metadata in memory
-            #         while len(plane.artifacts) > 0:
-            #             plane.artifacts.pop()
-            #     else:
-            #         self._logger.error(f'No Observation for {found_storage_name.file_name}')
-            # found_storage_name.rename(central_wavelength)
-            found_storage_name.rename('')
-            fqn = os.path.join(self._working_directory, found_storage_name.file_name)
-            renamed_fqn = os.path.join(self._working_directory, found_storage_name.stage_names[0])
-            os.rename(fqn, renamed_fqn)
-            self._logger.info(f'Renamed {fqn} to {renamed_fqn}.')
-            self._logger.debug(f'{found_storage_name.file_uri}')
+            # TODO - not quite sure which header index to return :)
+            headers = self._remote_metadata_reader.headers.get(found_storage_name.file_uri)
+            if headers:
+                renamed_file = self._find_new_file_name(headers[0], ('mfs' in found_storage_name.file_name))
+                fqn = os.path.join(self._working_directory, found_storage_name.file_name)
+                found_storage_name.set_staging_name(renamed_file)
+                renamed_fqn = os.path.join(self._working_directory, renamed_file)
+                os.rename(fqn, renamed_fqn)
+                self._logger.info(f'Renamed {fqn} to {renamed_fqn}.')
+                self._logger.debug(f'{found_storage_name.file_uri}')
+                # found_observation = False
+                # central_wavelength = self._central_wavelengths.get(found_storage_name.obs_id)
+                # if not central_wavelength:
+                #     self._logger.info(f'Building a temp record for {found_storage_name.file_uri}')
+                #     # create a CAOM2 record
+                #     kwargs = {
+                #         'working_directory': self._working_directory,
+                #         'config': self._config,
+                #         'clients': self._clients,
+                #         'storage_name': found_storage_name,
+                #         'metadata_reader': self._remote_metadata_reader,
+                #         'observable': self._observable,
+                #     }
+                #     observation = repo_get(
+                #         self._clients.server_side_ctor_client,
+                #         found_storage_name.collection,
+                #         found_storage_name.obs_id,
+                #         self._observable.metrics,
+                #     )
+                #     if observation:
+                #         found_observation = True
+                #     for visitor in META_VISITORS:
+                #         observation = visitor.visit(observation, **kwargs)
+                #     if observation:
+                #         # post it to sc2
+                #         if found_observation:
+                #             repo_update(
+                #                 self._clients.server_side_ctor_client,
+                #                 observation,
+                #                 self._observable.metrics,
+                #             )
+                #         else:
+                #             repo_create(
+                #                 self._clients.server_side_ctor_client,
+                #                 observation,
+                #                 self._observable.metrics,
+                #             )
+                #         # read it back
+                #         observation = repo_get(
+                #             self._clients.server_side_ctor_client,
+                #             found_storage_name.collection,
+                #             found_storage_name.obs_id,
+                #             self._observable.metrics,
+                #         )
+                #         # calculate central wavelength
+                #         plane = observation.planes[found_storage_name.product_id]
+                #         min_wavelength = (
+                #             plane.energy.bounds.lower * units.meter
+                #         ).to(units.MHz, equivalencies=units.spectral())
+                #         max_wavelength = (
+                #             plane.energy.bounds.upper * units.meter
+                #         ).to(units.MHz, equivalencies=units.spectral())
+                #         central = min_wavelength + ( min_wavelength - max_wavelength ) / 2
+                #         central_wavelength = f'{round(central.value)}MHz'.strip()
+                #         self._logger.info(
+                #             f'Found central wavelength of {central_wavelength} for {found_storage_name.obs_id}'
+                #         )
+                #         self._central_wavelengths[found_storage_name.obs_id] = central_wavelength
+                #         self._observations[found_storage_name.obs_id] = observation
+                #         # keep the least amount of necessary metadata in memory
+                #         while len(plane.artifacts) > 0:
+                #             plane.artifacts.pop()
+                #     else:
+                #         self._logger.error(f'No Observation for {found_storage_name.file_name}')
+                # found_storage_name.rename(central_wavelength)
+                # found_storage_name.rename('')
+                # fqn = os.path.join(self._working_directory, found_storage_name.file_name)
+                # renamed_fqn = os.path.join(self._working_directory, found_storage_name.stage_names[0])
+                # os.rename(fqn, renamed_fqn)
+                # self._logger.info(f'Renamed {fqn} to {renamed_fqn}.')
+                # self._logger.debug(f'{found_storage_name.file_uri}')
+            else:
+                self._logger.warning(f'Could not find headers for {file_name}')
         self._logger.debug('End _rename')
 
     def _set_up_file_logging(self):

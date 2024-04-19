@@ -88,6 +88,10 @@ meta_read_groups:
   - ivo://cadc.nrc.ca/gms?CADC
   - ivo://cadc.nrc.ca/gms?POSSUM-RW
   - ivo://cadc.nrc.ca/gms?POSSUM_Members
+lookup:
+  rename_version: v1
+  rename_prefix: PSM
+  rclone_include_pattern: *[iqu].fits
 # how to control the work that gets done
 # possible values are:
 # - scrape - read the headers, write out the xml - kind of a test mode

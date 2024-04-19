@@ -218,7 +218,6 @@ class PossumName(StorageName):
     def set_obs_id(self):
         # picking the common prefix, e.g. 944MHz_pilot1_18asec_2226-5552_11268, and then re-organize it a bit
         # leave off the "PSM" because collection is POSSUM
-        self._logger.error(self._file_id)
         bits = self._file_id.split('_')
         if len(bits) > 3:
             if 'pilot' in self._file_id:
@@ -246,46 +245,34 @@ class PossumName(StorageName):
 
     def set_product_id(self):
         bits = self._file_id.split('_')
-        self._logger.error(self._file_id)
         if len(bits) > 3:
-            index = 5
-            if 'pilot' in self._file_id:
-                index = 6
-            elif len(bits) == 7 and bits[-1] == 'v1':
-                self._logger.error(f'len bits {len(bits)} {self._file_id} {bits}')
-                index = 5
-            elif len(bits) == 8 and bits[-1] == 'v1':
-                index = 6
             if '_p3d_' in self._file_id:
                 self._product_id = '3d_pipeline'
             elif '_p1d_' in self._file_id:
                 # catalog in csv, spectra, FDF in BINTABLE
                 # self._product_id = '1d_pipeline'
                 self._product_id = self._file_id
-            elif bits[index] == 'i':
-                self._product_id = 'raw_i'
-            elif bits[index] == 'q' or bits[index] == 'u':
-                self._product_id = 'raw_qu'
-            elif bits[index] == 't0' or bits[index] == 't1':
+            elif 't0' in bits or 't1' in bits:
                 # Cameron Van Eck - 23-10-23
                 # “mfs_i_t0" or “multifrequencysynthesis_i_t0” for the image product ProductID
-                self._product_id = f'multifrequencysynthesis_{bits[7]}_{bits[6]}'
-            else:
-                raise CadcException(f'Unexpected file naming pattern {self._file_id}')
+                self._product_id = f'multifrequencysynthesis_{bits[-2]}_{bits[-3]}'
+            elif 'i' in bits:
+                self._product_id = 'raw_i'
+            elif 'q' in bits or 'u' in bits:
+                self._product_id = 'raw_qu'
         else:
             bits = self._file_id.split('.')
-            if 'mfs' in self._file_id:
+            if 'mfs' in bits:
                 self._product_id = f'multifrequencysynthesis_{bits[-1]}'
-            else:
-                index = 3
-                if self._file_id.startswith('POSSUM'):
-                    index = 4
-                if bits[index] == 'i':
-                    self._product_id = 'raw_i'
-                elif bits[index] == 'q' or bits[index] == 'u':
-                    self._product_id = 'raw_qu'
-            if self._product_id is None:
-                raise CadcException(f'Unexpected raw file naming pattern {self._file_id}')
+            elif 'i' in bits:
+                self._product_id = 'raw_i'
+            elif 'q' in bits or 'u' in bits:
+                self._product_id = 'raw_qu'
+        if self._product_id is None:
+            raise CadcException(f'Unexpected raw file naming pattern {self._file_id}')
+
+    def set_staging_name(self, value):
+        self._stage_names.append(value)
 
     def un_name(self):
         """Undo the renaming from Pawsey Acacia, to be able to work backwards for sc2 Observation metadata."""

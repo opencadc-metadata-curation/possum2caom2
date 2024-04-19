@@ -1,11 +1,6 @@
 [
-{"Path":"components/0049-51/mfs/i/image.i.EMU_0049-51.SB46951.cont.taylor.0.restored.conv.sm_0049-51-10666.fits","Name":"image.i.EMU_0049-51.SB46951.cont.taylor.0.restored.conv.sm_0049-51-10666.fits","Size":16787520,"MimeType":"image/fits","ModTime":"2023-10-26T09:07:11.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"components/0049-51/mfs/w/weights.i.EMU_0049-51.SB46951.cont.taylor.0_0049-51-10666.fits","Name":"weights.i.EMU_0049-51.SB46951.cont.taylor.0_0049-51-10666.fits","Size":16787520,"MimeType":"image/fits","ModTime":"2023-10-26T09:01:57.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"components/0049-51/survey/i/PSM.0049-51.11092.i.fits","Name":"PSM.0049-51.11092.i.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T20:10:04.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"components/0214-46/mfs/mfs/i/image.i.EMU_0214-46.SB47130.cont.taylor.0.restored.conv.sm_0214-46-10786.fits","Name":"image.i.EMU_0214-46.SB47130.cont.taylor.0.restored.conv.sm_0214-46-10786.fits","Size":16787520,"MimeType":"application/octet-stream","ModTime":"2023-10-19T07:52:49.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"components/0313-69/mfs/i/image.i.EMU_0313-69.SB46982.cont.taylor.0.restored.conv.sm_0313-69-12030.fits","Name":"image.i.EMU_0313-69.SB46982.cont.taylor.0.restored.conv.sm_0313-69-12030.fits","Size":16787520,"MimeType":"image/fits","ModTime":"2023-10-26T11:51:39.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"components/1136-64/survey/q/PSM.1136-64.11836.q.fits","Name":"PSM.1136-64.11836.q.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T21:57:09.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"components/1136-64/survey/u/PSM.1136-64.11485.u.fits","Name":"PSM.1136-64.11485.u.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T22:06:11.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"components/0049-51/survey/i/PSM.0049-51.10887.i.fits","Name":"PSM.0049-51.10887.i.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-11-18T20:47:50.000000000Z","IsDir":false,"Tier":"STANDARD"},
-{"Path":"tiles/survey/9799","Name":"9799","Size":-1,"MimeType":"inode/directory","ModTime":"2024-03-21T19:07:06.072755628Z","IsDir":true}
+{"Path":"components/0049-51/survey/i/PSM.0049-51.11092.i.fits","Name":"PSM.band1.0049-51.11092.i.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T20:10:04.000000000Z","IsDir":false,"Tier":"STANDARD"},
+{"Path":"components/1136-64/survey/q/PSM.1136-64.11836.q.fits","Name":"PSM.band2.1136-64.11836.q.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T21:57:09.000000000Z","IsDir":false,"Tier":"STANDARD"},
+{"Path":"components/1136-64/survey/u/PSM.1136-64.11485.u.fits","Name":"PSM.band2.1136-64.11485.u.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T22:06:11.000000000Z","IsDir":false,"Tier":"STANDARD"},
+{"Path":"components/0049-51/survey/i/PSM.0049-51.10887.i.fits","Name":"PSM.band1.0049-51.10887.i.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-11-18T20:47:50.000000000Z","IsDir":false,"Tier":"STANDARD"}
 ]

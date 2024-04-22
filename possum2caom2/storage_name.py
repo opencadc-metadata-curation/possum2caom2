@@ -115,15 +115,19 @@ class PossumName(StorageName):
     POSSUM_NAME_PATTERN = '*'
 
     def __init__(self, entry):
+        self._central_frequency = None
         self._healpix_index = None
-        self._spatial_resolution = None
+        self._pilot = None
+        self._position = None
+        self._resolution = None
+        self._version = None
         # the renamed files in a list
         self._stage_names = []
         super().__init__(file_name=basename(entry.replace('.header', '')), source_names=[entry])
 
     def __str__(self):
         temp = super().__str__()
-        return f'{temp}\n          rename: {self.rename("")}\n   healpix_index: {self._healpix_index}\n      resolution: {self._spatial_resolution}'
+        return f'{temp}\n          rename: {self.rename("")}\n   healpix_index: {self._healpix_index}\n      resolution: {self._resolution}'
 
     @property
     def file_uri(self):
@@ -140,13 +144,18 @@ class PossumName(StorageName):
         return '_FDFs.fits' in self._file_name or '_spectra.fits' in self._file_name
 
     @property
+    def is_original(self):
+        # return 'POSSUM' in self._file_id or 'band' in self._file_id
+        return 'asec' not in self._file_id
+
+    @property
     def prev(self):
         """The preview file name for the file."""
         return f'{self._obs_id}_{self._product_id}_prev.jpg'
 
     @property
     def spatial_resolution(self):
-        return self._spatial_resolution
+        return float(self._resolution.replace('asec', ''))
 
     @property
     def stage_names(self):
@@ -168,6 +177,7 @@ class PossumName(StorageName):
         # resolution == 20asec
         # Jennifer West 16-04-24
         # make the coordinates 8 digits => XXXX-XXXX
+        # POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits
         x = self._file_name.split('.fits')
         bits = x[0].split('.')
         for index, bit in enumerate(bits):
@@ -218,52 +228,47 @@ class PossumName(StorageName):
     def set_obs_id(self):
         # picking the common prefix, e.g. 944MHz_pilot1_18asec_2226-5552_11268, and then re-organize it a bit
         # leave off the "PSM" because collection is POSSUM
-        bits = self._file_id.split('_')
-        if len(bits) > 3:
-            if 'pilot' in self._file_id:
-                self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}_{bits[1]}'
-                self._healpix_index = bits[5]
-                self._spatial_resolution = float(bits[3].replace('asec', ''))
-            else:
-                if len(bits) == 8:
-                    self._obs_id = '_'.join(ii for ii in bits[1:-1])
-                    self._healpix_index = bits[-4]
-                    self._spatial_resolution = float(bits[2].replace('asec', ''))
-                else:
-                    self._obs_id = '_'.join(ii for ii in bits[1:])
-                    self._healpix_index = bits[-2]
-                    self._spatial_resolution = float(bits[2].replace('asec', ''))
+        #
+        # mfs: POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits
+        if self.is_original:
+            # how the file names come from Pawsey
+            self._obs_id = self._file_id
         else:
-            if 'mfs' in self._file_id:
-                self._obs_id = '_'.join(ii for ii in bits[1:-1])
-                self._healpix_index = bits[-2]
-                self._spatial_resolution = None
+            bits = self._file_id.split('_')
+            index = lambda x: bits[x + 1] if 'pilot' in self._file_id else bits[x]
+            self._central_frequency = index(1)
+            self._resolution = index(2)
+            self._position = index(3)
+            self._healpix_index = index(4)
+            for bit in bits:
+                if bit.startswith('v') and len(bit) in [2, 3]:
+                    self._version = bit
+                if bit.startswith('pilot'):
+                    self._pilot = bit
+            if self._pilot:
+                self._obs_id = (
+                    f'{self._central_frequency}_{self._resolution}_{self._position}_{self._healpix_index}_'
+                    f'{self._pilot}_{self._version}'
+                )
             else:
-                bits = self._file_id.split('.')
-                self._obs_id = f'{bits[1]}_{bits[2]}'
-                self._healpix_index = bits[2]
+                self._obs_id = (
+                    f'{self._central_frequency}_{self._resolution}_{self._position}_{self._healpix_index}_{self._version}'
+                )
 
     def set_product_id(self):
-        bits = self._file_id.split('_')
-        if len(bits) > 3:
+        if self.is_original:
+            self._product_id = self._file_id
+        else:
+            bits = self._file_id.split('_')
             if '_p3d_' in self._file_id:
                 self._product_id = '3d_pipeline'
             elif '_p1d_' in self._file_id:
                 # catalog in csv, spectra, FDF in BINTABLE
-                # self._product_id = '1d_pipeline'
-                self._product_id = self._file_id
+                self._product_id = '1d_pipeline'
             elif 't0' in bits or 't1' in bits:
                 # Cameron Van Eck - 23-10-23
                 # “mfs_i_t0" or “multifrequencysynthesis_i_t0” for the image product ProductID
                 self._product_id = f'multifrequencysynthesis_{bits[-2]}_{bits[-3]}'
-            elif 'i' in bits:
-                self._product_id = 'raw_i'
-            elif 'q' in bits or 'u' in bits:
-                self._product_id = 'raw_qu'
-        else:
-            bits = self._file_id.split('.')
-            if 'mfs' in bits:
-                self._product_id = f'multifrequencysynthesis_{bits[-1]}'
             elif 'i' in bits:
                 self._product_id = 'raw_i'
             elif 'q' in bits or 'u' in bits:

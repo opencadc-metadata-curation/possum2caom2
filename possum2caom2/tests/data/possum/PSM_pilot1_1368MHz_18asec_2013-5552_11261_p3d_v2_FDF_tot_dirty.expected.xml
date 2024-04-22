@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="ed608f2a-d209-4599-9a7b-9f2164dee158">
   <caom2:collection>POSSUM</caom2:collection>
-  <caom2:observationID>1368MHz_18asec_2013-5552_11261_pilot1</caom2:observationID>
+  <caom2:observationID>1368MHz_18asec_2013-5552_11261_pilot1_v2</caom2:observationID>
   <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
   <caom2:metaReadGroups>
     <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>

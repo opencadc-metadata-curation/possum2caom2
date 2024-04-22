@@ -66,9 +66,11 @@
 # ***********************************************************************
 #
 
+import glob
 import json
 import logging
 import os
+import traceback
 
 from astropy import units
 from astropy.coordinates import SkyCoord
@@ -184,6 +186,7 @@ class RemoteMetadataReader(FileMetadataReader):
                     possum_name = PossumName(name)
                 except CadcException as e:
                     self._logger.error(e)
+                    self._logger.debug(traceback.format_exc())
                     continue
                 if possum_name.file_uri not in self._file_info:
                     self._logger.debug(f'Retrieve FileInfo for {possum_name.file_uri}')
@@ -200,12 +203,12 @@ class RemoteMetadataReader(FileMetadataReader):
                     self._storage_names[possum_name.file_uri] = possum_name
         self._logger.debug(f'End set_file_info with max datetime {self._max_dt}')
 
-    def set_headers(self, storage_name, working_directory):
+    def set_headers(self, storage_name, fqn):
         self._logger.debug(f'Begin set_headers for {storage_name.file_name}')
         for entry in storage_name.destination_uris:
-            if entry not in self._headers:
+            if entry not in self._headers and os.path.basename(entry) == os.path.basename(fqn):
                 self._logger.debug(f'Retrieve headers for {entry}')
-                self._retrieve_headers(entry, os.path.join(working_directory, os.path.basename(entry)))
+                self._retrieve_headers(entry, fqn)
         self._logger.debug('End set_headers')
 
 
@@ -249,11 +252,10 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         self._logger.debug('Begin _initialize_end_dt')
         end_timestamp = self._state.bookmarks.get(self._start_key).get('end_timestamp')
         if end_timestamp is None:
-            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --max-age={self._start_dt.isoformat()} --include={self._data_source_extensions}')
+            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --recursive --max-age={self._start_dt.isoformat()} --include={self._data_source_extensions}')
         else:
-            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --max-age={self._start_dt.isoformat()} --min-age={end_timestamp.isoformat()} --include={self._data_source_extensions}')
+            output = exec_cmd_info(f'rclone lsjson {self._remote_key} --recursive --max-age={self._start_dt.isoformat()} --min-age={end_timestamp.isoformat()} --include={self._data_source_extensions}')
 
-        self._logger.error(output)
         self._metadata_reader.set_file_info(output)
         if self._metadata_reader.max_dt:
             self._end_dt = self._metadata_reader.max_dt
@@ -271,17 +273,16 @@ class RemoteIncrementalDataSource(IncrementalDataSource):
         self._kwargs['exec_dt'] = exec_dt
         self._kwargs['metadata_reader'] = self._metadata_reader
         execution_unit = ExecutionUnit(self._config, **self._kwargs)
-        execution_unit.start()
-        # get the files from the DataSource to the staging space
-        # --max-age  -> only transfer files younger than this in s
-        # --min-age -> only transfer files older than this in s
-        exec_cmd(
-            f'rclone copy {self._remote_key} {execution_unit.working_directory} --max-age={prev_exec_dt.isoformat()} '
-            f'--min-age={exec_dt.isoformat()} --include={self._data_source_extensions}'
-        )
         execution_unit.num_entries, execution_unit.entry_dt = self._metadata_reader.get_time_box_work_parameters(prev_exec_dt, exec_dt)
-        if execution_unit.num_entries == 0:
-            execution_unit.stop()
+        if execution_unit.num_entries > 0:
+            execution_unit.start()
+            # get the files from the DataSource to the staging space
+            # --max-age  -> only transfer files younger than this in s
+            # --min-age -> only transfer files older than this in s
+            exec_cmd(
+                f'rclone copy {self._remote_key} {execution_unit.working_directory} --max-age={prev_exec_dt.isoformat()} '
+                f'--min-age={exec_dt.isoformat()} --include={self._data_source_extensions}'
+            )
         self._logger.debug('End get_time_box_work')
         return execution_unit
 
@@ -343,7 +344,6 @@ class ExecutionUnitStateRunner(StateRunner):
         data_source.initialize_end_dt()
         prev_exec_time = data_source.start_dt
         incremented = increment_time(prev_exec_time, self._config.interval)
-        self._logger.error(f'incremented {incremented} end {data_source.end_dt}')
         exec_time = min(incremented, data_source.end_dt)
 
         self._logger.info(f'Starting at {prev_exec_time}, ending at {data_source.end_dt}')
@@ -471,6 +471,7 @@ class ExecutionUnit:
         todo_config = deepcopy(self._config)
         todo_config.use_local_files = True
         todo_config.data_sources = [self._working_directory]
+        todo_config.recurse_data_sources = True
         self._logger.debug(f'do config for TodoRunner: {todo_config}')
         self._local_metadata_reader = TodoMetadataReader(self._remote_metadata_reader)
         organizer = OrganizeExecutes(
@@ -479,7 +480,7 @@ class ExecutionUnit:
             DATA_VISITORS,
             None,  # chooser
             Transfer(),
-            CadcTransfer(self._clients.cadc_client),
+            CadcTransfer(self._clients.data_client),
             self._local_metadata_reader,
             self._clients,
             self._observable,
@@ -529,13 +530,18 @@ class ExecutionUnit:
         """
         # if os.path.exists(self._working_directory) and TaskType.SCRAPE not in self._task_types and self._config.cleanup_files_when_storing:
         if os.path.exists(self._working_directory) and TaskType.SCRAPE not in self._task_types:
-            entries = os.listdir(self._working_directory)
+            entries = glob.glob('*', root_dir=self._working_directory, recursive=True)
             if (self._config.cleanup_files_when_storing and len(entries) > 0) or len(entries) == 0:
-                for ii in os.listdir(self._working_directory):
-                    os.remove(os.path.join(self._working_directory, ii))
+                for entry in entries:
+                    temp_fqn = os.path.join(self._working_directory, entry)
+                    self._logger.error(temp_fqn)
+                    if os.path.isdir(temp_fqn):
+                        os.rmdir(temp_fqn)
+                    else:
+                        os.unlink(temp_fqn)
                 self._logger.error(f'removing {self._working_directory}')
                 os.rmdir(self._working_directory)
-            self._logger.debug(f'Removed working directory {self._working_directory} and contents.')
+                self._logger.debug(f'Removed working directory {self._working_directory} and contents.')
         self._logger.debug('End _clean_up_workspace')
 
     def _find_new_file_name(self, hdr, mfs):
@@ -634,15 +640,19 @@ class ExecutionUnit:
         c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')
 
         h, hm, hs = c.ra.hms
-        hmhs = round(hm + (hs / 60.0))
-        hmhs = str(hmhs).zfill(2)
-        hm = f'{int(h):02d}{hmhs}'
+        hmhs = f'{round(hm + (hs / 60.0))}'.zfill(2)
+        if h < 0.0:
+            hm = f'{int(h):03d}{hmhs}'
+        else:
+            hm = f'{int(h):02d}{hmhs}'
 
-        d, dm, _ = c.dec.dms
+        d, dm, ds = c.dec.dms
         # if dec is in the southern sky leave as is. If northen add a +.
-        dmds = round(abs(dm) + (abs(dm) / 60.0))
-        dmds = str(dmds).zfill(2)
-        dm = f'{int(d):02d}{dmds}'
+        dmds = f'{round(abs(dm) + (abs(ds) / 60.0))}'.zfill(2)
+        if d < 0.0:
+            dm = f'{int(d):03d}{dmds}'
+        else:
+            dm = f'{int(d):02d}{dmds}'
         if (c.dec < 0) and (dm[0] != '-'):
             dm = '-'+dm
         if c.dec > 0:
@@ -710,26 +720,25 @@ class ExecutionUnit:
         coordinates for n=32.
         """
         self._logger.debug('Begin _rename')
-        work = os.listdir(self._working_directory)
+        work = glob.glob('**/*.fits', root_dir=self._working_directory, recursive=True)
         for file_name in work:
-            self._logger.info(f'Working on {file_name}')
+            self._logger.error(f'Working on {file_name}')
             found_storage_name = None
             for storage_name in self._remote_metadata_reader.storage_names.values():
-                if storage_name.file_name == file_name:
+                if storage_name.file_name == os.path.basename(file_name):
                     found_storage_name = storage_name
                     break
 
-            self._remote_metadata_reader.set_headers(found_storage_name, self._working_directory)
+            original_fqn = os.path.join(self._working_directory, file_name)
+            self._remote_metadata_reader.set_headers(found_storage_name, original_fqn)
             # TODO - not quite sure which header index to return :)
             headers = self._remote_metadata_reader.headers.get(found_storage_name.file_uri)
             if headers:
                 renamed_file = self._find_new_file_name(headers[0], ('mfs' in found_storage_name.file_name))
-                fqn = os.path.join(self._working_directory, found_storage_name.file_name)
                 found_storage_name.set_staging_name(renamed_file)
-                renamed_fqn = os.path.join(self._working_directory, renamed_file)
-                os.rename(fqn, renamed_fqn)
-                self._logger.info(f'Renamed {fqn} to {renamed_fqn}.')
-                self._logger.debug(f'{found_storage_name.file_uri}')
+                renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)
+                os.rename(original_fqn, renamed_fqn)
+                self._logger.info(f'Renamed {original_fqn} to {renamed_fqn}.')
                 # found_observation = False
                 # central_wavelength = self._central_wavelengths.get(found_storage_name.obs_id)
                 # if not central_wavelength:
@@ -861,6 +870,9 @@ def remote_execution():
     metadata_reader = RemoteMetadataReader()
     organizer = ExecutionUnitOrganizeExecutes()
     clients = RCloneClients(config)
+    StorageName.collection = config.collection
+    StorageName.preview_scheme = config.preview_scheme
+    StorageName.scheme = config.scheme
     kwargs = {
         'clients': clients,
         'observable': observable,

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:DerivedObservation" caom2:id="ac5dd127-30c6-40fa-9c85-e7d97c994696" caom2:metaProducer="test_possum/0.0.0">
   <caom2:collection>POSSUM</caom2:collection>
-  <caom2:observationID>944MHz_18asec_2013-5553_11261_p1d_v1</caom2:observationID>
+  <caom2:observationID>944MHz_18asec_2013-5553_11261_v1</caom2:observationID>
   <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
   <caom2:metaReadGroups>
     <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
@@ -13,7 +13,7 @@
   </caom2:algorithm>
   <caom2:planes>
     <caom2:plane caom2:id="35e76f43-4540-4c77-a037-cbbfc204c28f" caom2:metaProducer="test_possum/0.0.0">
-      <caom2:productID>PSM_944MHz_18asec_2013-5553_11261_p1d_v1_FDFs</caom2:productID>
+      <caom2:productID>1d_pipeline</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>

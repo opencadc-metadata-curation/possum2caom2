@@ -145,7 +145,6 @@ class PossumName(StorageName):
 
     @property
     def is_original(self):
-        # return 'POSSUM' in self._file_id or 'band' in self._file_id
         return 'asec' not in self._file_id
 
     @property
@@ -177,7 +176,6 @@ class PossumName(StorageName):
         # resolution == 20asec
         # Jennifer West 16-04-24
         # make the coordinates 8 digits => XXXX-XXXX
-        # POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits
         x = self._file_name.split('.fits')
         bits = x[0].split('.')
         for index, bit in enumerate(bits):
@@ -226,10 +224,7 @@ class PossumName(StorageName):
                 self._destination_uris.append(self._get_uri(base_name, current_scheme))
 
     def set_obs_id(self):
-        # picking the common prefix, e.g. 944MHz_pilot1_18asec_2226-5552_11268, and then re-organize it a bit
         # leave off the "PSM" because collection is POSSUM
-        #
-        # mfs: POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits
         if self.is_original:
             # how the file names come from Pawsey
             self._obs_id = self._file_id

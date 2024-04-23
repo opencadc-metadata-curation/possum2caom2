@@ -70,6 +70,7 @@ import glob
 import json
 import logging
 import os
+import shutil
 import traceback
 
 from astropy import units
@@ -532,16 +533,8 @@ class ExecutionUnit:
         if os.path.exists(self._working_directory) and TaskType.SCRAPE not in self._task_types:
             entries = glob.glob('*', root_dir=self._working_directory, recursive=True)
             if (self._config.cleanup_files_when_storing and len(entries) > 0) or len(entries) == 0:
-                for entry in entries:
-                    temp_fqn = os.path.join(self._working_directory, entry)
-                    self._logger.error(temp_fqn)
-                    if os.path.isdir(temp_fqn):
-                        os.rmdir(temp_fqn)
-                    else:
-                        os.unlink(temp_fqn)
-                self._logger.error(f'removing {self._working_directory}')
-                os.rmdir(self._working_directory)
-                self._logger.debug(f'Removed working directory {self._working_directory} and contents.')
+                shutil.rmtree(self._working_directory)
+                self._logger.error(f'Removed working directory {self._working_directory} and contents.')
         self._logger.debug('End _clean_up_workspace')
 
     def _find_new_file_name(self, hdr, mfs):
@@ -640,7 +633,7 @@ class ExecutionUnit:
         c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')
 
         h, hm, hs = c.ra.hms
-        hmhs = f'{round(hm + (hs / 60.0))}'.zfill(2)
+        hmhs = str(round(hm + (hs / 60.0))).zfill(2)
         if h < 0.0:
             hm = f'{int(h):03d}{hmhs}'
         else:
@@ -648,7 +641,7 @@ class ExecutionUnit:
 
         d, dm, ds = c.dec.dms
         # if dec is in the southern sky leave as is. If northen add a +.
-        dmds = f'{round(abs(dm) + (abs(ds) / 60.0))}'.zfill(2)
+        dmds = str(round(abs(dm) + (abs(ds) / 60.0))).zfill(2)
         if d < 0.0:
             dm = f'{int(d):03d}{dmds}'
         else:
@@ -722,7 +715,7 @@ class ExecutionUnit:
         self._logger.debug('Begin _rename')
         work = glob.glob('**/*.fits', root_dir=self._working_directory, recursive=True)
         for file_name in work:
-            self._logger.error(f'Working on {file_name}')
+            self._logger.info(f'Working on {file_name}')
             found_storage_name = None
             for storage_name in self._remote_metadata_reader.storage_names.values():
                 if storage_name.file_name == os.path.basename(file_name):

@@ -392,14 +392,14 @@ def test_state_runner_nominal_multiple_files(
     #     call.metadata_client.create(ANY),
     # ], f'clients {test_clients.mock_calls}'
     assert test_clients.mock_calls == [
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5248_11073_i_v1.fits'),
-        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5248_11073_v1'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_i_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         call.metadata_client.create(ANY),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1367MHz_18asec_2013-5552_11261_i_v1.fits'),
-        call.metadata_client.read('POSSUM', '1367MHz_18asec_2013-5552_11261_v1'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1367MHz_18asec_2013-5553_11261_i_v1.fits'),
+        call.metadata_client.read('POSSUM', '1367MHz_18asec_2013-5553_11261_v1'),
         call.metadata_client.create(ANY),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5248_11073_q_v1.fits'),
-        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5248_11073_v1'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
@@ -490,11 +490,11 @@ def test_state_runner_clean_up_when_storing_with_retry(
         # call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
         # call.server_side_ctor_client.create(ANY),
         # call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5248_11073_q_v1.fits'),
-        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5248_11073_v1'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         # because there's a retry
-        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5248_11073_q_v1.fits'),
-        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5248_11073_v1'),
+        call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
+        call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
@@ -584,11 +584,7 @@ def test_remote_execute_with_local_commands(
     # mock returns
     # test_observation is purely for return values - it has nothing to do with the files from the test directory
     test_observation = read_obs_from_file(f'{test_data_dir}/storage_mock/renaming_observation.xml')
-    # there are four test files
     clients_mock.return_value.server_side_ctor_client.read.return_value = None
-    # clients_mock.return_value.server_side_ctor_client.read.side_effect = [
-    #     None, test_observation, None, test_observation, None, test_observation, None, test_observation
-    # ]
     visit_mock.return_value = test_observation
 
     test_result = possum_execute.remote_execution()
@@ -596,33 +592,17 @@ def test_remote_execute_with_local_commands(
     assert clients_mock.return_value.data_client.put.call_count == 5, f'client mock {clients_mock.return_value.data_client.put.call_count}'
     assert clients_mock.return_value.metadata_client.read.call_count == 5, f'metadata client call count'
     assert clients_mock.return_value.metadata_client.update.call_count == 5, f'metadata client call count'
-    # assert (
-    #     clients_mock.return_value.data_client.put.mock_calls == [
-    #         call('', '', 'cadc:POSSUM/POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits'),
-    #         call(),
-    #         call(),
-    #         call(),
-    #         call(),
-    #     ]
-    # ), clients_mock.return_value.data_client.put.mock_calls
-    # assert clients_mock.return_value.metadata_client.mock_calls == [
-    #     call.read('POSSUM', '944MHz_20asec_0204-41_10187_q_v1'),
-    #     call.read().__sizeof__(),
-    #     call.read().observation_id.__str__,
-    #     call.update(ANY),
-    #     call.read('POSSUM', '944MHz_20asec_0204-41_10187_i_v1'),
-    #     call.read().__sizeof__,
-    #     call.read().observation_id.__str__,
-    #     call.update(ANY),
-    #     call.read('POSSUM', '1296MHz_20asec_1506-32A_1506-32B_9488_i_v1'),
-    #     call.read().__sizeof__,
-    #     call.read().observation_id.__str__,
-    #     call.update(ANY),
-    #     call.read('POSSUM', '944MHz_20asec_0204-41_10187_u_v1'),
-    #     call.read().__sizeof__,
-    #     call.read().observation_id.__str__,
-    #     call.update(ANY),
-    # ], f'client mock {clients_mock.return_value.metadata_client.mock_calls}'
+    time_box_1 = '2024-04-20T16_33_00_2024-04-21T17_46_39_860112'
+    time_box_2 = '2024-04-16T16_33_00_2024-04-18T16_33_00'
+    assert (
+        clients_mock.return_value.data_client.put.mock_calls == [
+            call(f'{tmp_path}/{time_box_2}', 'cadc:POSSUM/POSSUM.band2.1506-32A_1506-32B.9488.i.fits'),
+            call(f'{tmp_path}/{time_box_2}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.i.fits'),
+            call(f'{tmp_path}/{time_box_2}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.u.fits'),
+            call(f'{tmp_path}/{time_box_2}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.q.fits'),
+            call(f'{tmp_path}/{time_box_1}', 'cadc:POSSUM/POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits'),
+        ]
+    ), clients_mock.return_value.data_client.put.mock_calls
     assert (
         clients_mock.return_value.server_side_ctor_client.mock_calls == []
     ), f'client mock {clients_mock.server_side_ctor_client.mock_calls}'

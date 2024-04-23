@@ -556,8 +556,6 @@ class ExecutionUnit:
         """
 
         self._logger.debug('Begin _find_new_file_name')
-        result = None
-        # hdr = fits.getheader(fitsimage)
 
         # get bmaj.
         bmaj = round(hdr.get('BMAJ') * 3600.0)
@@ -571,9 +569,9 @@ class ExecutionUnit:
             # if Stokes is axis 3, then frequency is axis 4.
             freq0 = hdr.get('CRVAL4')
             dfreq = hdr.get('CDELT4')
-            N = hdr.get('naxis4')
-            if N and N > 1:
-                cenfreq = round((freq0 + (freq0 + N * dfreq))/(2.0 * 1e6))
+            n = hdr.get('NAXIS4')
+            if n and n > 1:
+                cenfreq = round((freq0 + (freq0 + n * dfreq))/(2.0 * 1e6))
             else:
                 cenfreq = round(freq0/1e6)
 
@@ -583,14 +581,14 @@ class ExecutionUnit:
             # if Stokes is axis 4, then frequency is axis 3. If we have >4 axis, the script will fail.
             freq0 = hdr.get('CRVAL3')
             dfreq = hdr.get('CDELT3')
-            N = hdr.get('naxis3')
-            if N and N > 1:
-                cenfreq = round((freq0 + (freq0 + N * dfreq))/(2.0 * 1e6))
+            n = hdr.get('naxis3')
+            if n and n > 1:
+                cenfreq = round((freq0 + (freq0 + n * dfreq))/(2.0 * 1e6))
             else:
                 cenfreq = round(freq0/1e6)
 
         else:
-            # sys.exit(">>> Cannot find Stokes axis on the 3rd/4th axis")
+            self._logger.error('Cannot find Stokes axis on the 3rd/4th axis')
             return None
 
         cenfreq = f'{round(cenfreq)}MHz'
@@ -610,17 +608,16 @@ class ExecutionUnit:
 
         self._logger.info('Define healpix grid for nside 32')
         # define the healpix grid
-        hp = HEALPix(nside=32, order="ring", frame="icrs")
+        hp = HEALPix(nside=32, order='ring', frame='icrs')
 
         # read the image crpix1 and crpix2 to determine the tile ID, and coordinates in degrees.
-        naxis = hdr.get('naxis1')
-        cdelt = abs(hdr.get('cdelt1'))
+        naxis = hdr.get('NAXIS1')
+        cdelt = abs(hdr.get('CDELT1'))
         hpx_ref_hdr = self._reference_header(naxis=naxis, cdelt=cdelt)
-        # hpx_ref_hdr = fits.Header.fromstring("""%s"""%hpx_ref_hdr, sep='\n')
         hpx_ref_wcs = WCS(hpx_ref_hdr)
 
-        crpix1 = hdr.get('crpix1')
-        crpix2 = hdr.get('crpix2')
+        crpix1 = hdr.get('CRPIX1')
+        crpix2 = hdr.get('CRPIX2')
         crval1, crval2 = hpx_ref_wcs.wcs_pix2world(-crpix1, -crpix2 , 0)
         tileID = hp.lonlat_to_healpix(crval1 * units.deg, crval2 * units.deg, return_offsets=False)
         tileID = tileID - 1 #shifts by 1.
@@ -634,24 +631,16 @@ class ExecutionUnit:
 
         h, hm, hs = c.ra.hms
         hmhs = str(round(hm + (hs / 60.0))).zfill(2)
-        if h < 0.0:
-            hm = f'{int(h):03d}{hmhs}'
-        else:
-            hm = f'{int(h):02d}{hmhs}'
+        hm = f"{int(h):02d}{hmhs}"
 
         d, dm, ds = c.dec.dms
         # if dec is in the southern sky leave as is. If northen add a +.
-        dmds = str(round(abs(dm) + (abs(ds) / 60.0))).zfill(2)
-        if d < 0.0:
-            dm = f'{int(d):03d}{dmds}'
-        else:
-            dm = f'{int(d):02d}{dmds}'
+        dmds = str(round(abs(dm) + (abs(dm) / 60.0))).zfill(2)
+        dm = f'{abs(int(d)):02d}{dmds}'
         if (c.dec < 0) and (dm[0] != '-'):
             dm = '-'+dm
         if c.dec > 0:
             dm = '+' + dm
-
-        # RADEC = f'{hm}{dm}'
 
         if mfs:
             outname = (
@@ -663,8 +652,6 @@ class ExecutionUnit:
                 f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hm}{dm}_{tileID}_{stokesid}_'
                 f'{self._config.lookup.get('rename_version')}.fits'
             )
-
-        # os.system('mv %s %s'%(fitsimage, outname))
         return outname
 
     def _reference_header(self, naxis, cdelt):

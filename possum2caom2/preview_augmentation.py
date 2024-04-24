@@ -48,9 +48,9 @@ class PossumPreview(PreviewVisitor):
             elif m1[0] == '_u_':
                 pair_file = self._science_fqn.replace('_u_', '_q_')
                 self._get_pair_file(pair_file, self.storage_name.file_uri.replace('_u_', '_q_'))
-            data_alt = pf.getdata(pair_file)
-
-            data = self._collapse_qu_cubes(data, data_alt, mode='mean')
+            if os.path.exists(pair_file):
+                data_alt = pf.getdata(pair_file)
+                data = self._collapse_qu_cubes(data, data_alt, mode='mean')
 
         if m2 is not None:
             if m2[0] == '_real_':
@@ -59,11 +59,11 @@ class PossumPreview(PreviewVisitor):
             elif m2[0] == '_im_':
                 pair_file = self._science_fqn.replace('_im_', '_real_')
                 self._get_pair_file(pair_file, self.storage_name.file_uri.replace('_im_', '_real_'))
-            data_alt = pf.getdata(pair_file)
-            data = self._collapse_qu_cubes(data, data_alt, mode='maximum')
+            if os.path.exists(pair_file):
+                data_alt = pf.getdata(pair_file)
+                data = self._collapse_qu_cubes(data, data_alt, mode='maximum')
 
-        # If data is still 3D (i.e., a cube that isn't part of a Q,U pair), collapse
-        # the 3rd dimension.
+        # If data is still 3D (i.e., a cube that isn't part of a Q,U pair), collapse the 3rd dimension.
         data = np.squeeze(data)
         if data.ndim == 3:
             data = np.nanmean(data, axis=0)
@@ -129,7 +129,10 @@ class PossumPreview(PreviewVisitor):
 
     def _get_pair_file(self, pair_fqn, pair_uri):
         if not os.path.exists(pair_fqn):
-            self._clients.data_client.get(os.path.dirname(pair_fqn), pair_uri)
+            if self._clients.data_client.info(pair_uri):
+                self._clients.data_client.get(os.path.dirname(pair_fqn), pair_uri)
+            else:
+                self._logger.warning(f'Pair file {pair_uri} not found at CADC.')
 
 
 def visit(observation, **kwargs):

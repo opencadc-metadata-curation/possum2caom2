@@ -93,7 +93,7 @@ from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
 from caom2pipe import caom_composable as cc
 from caom2pipe.client_composable import repo_create, repo_get, repo_update
-from caom2pipe.manage_composable import CadcException, ValueRepairCache, write_obs_to_file
+from caom2pipe.manage_composable import CadcException, TaskType, ValueRepairCache
 
 
 __all__ = ['mapping_factory']
@@ -122,6 +122,7 @@ class Possum1DMapping(cc.TelescopeMapping):
         # months after being generated. It doesn't have to be particularly precise: date of ingest + increment year by 1
         self._1_year_after = datetime.now() + timedelta(days=365)
         self._server_side_observation = None
+        self._config = config
 
     def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model Observation level."""
@@ -149,14 +150,14 @@ class Possum1DMapping(cc.TelescopeMapping):
         (an n:n relationship between TDM attributes and CAOM attributes).
         """
         self._logger.debug(f'Begin update for {self._observation.observation_id}.')
-        write_obs_to_file(self._observation, './x.xml')
         try:
-            self._server_side_observation = repo_get(
-                self._clients.server_side_ctor_client,
-                self._storage_name.collection,
-                self._storage_name.obs_id,
-                self._observable.metrics,
-            )
+            if TaskType.SCRAPE not in self._config.task_types:
+                self._server_side_observation = repo_get(
+                    self._clients.server_side_ctor_client,
+                    self._storage_name.collection,
+                    self._storage_name.obs_id,
+                    self._observable.metrics,
+                )
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
             self._logger.debug('Done update.')
@@ -203,30 +204,33 @@ class Possum1DMapping(cc.TelescopeMapping):
 
     def _update_plane(self, plane):
         super()._update_plane(plane)
-        # write the observation to the client which is configured for server-side metadata creation at the plane level
-        # read the computed metadata from that CAOM service and copy the Plane-level bits
-        if self._server_side_observation:
-            repo_update(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
+        if TaskType.SCRAPE in self._config.task_types:
+            self._logger.warning(f'No plane metadata update for {self._observation.observation_id}')
         else:
-            repo_create(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
-        self._server_side_observation = repo_get(
-            self._clients.server_side_ctor_client,
-            self._storage_name.collection,
-            self._storage_name.obs_id,
-            self._observable.metrics,
-        )
-        for computed_plane in self._server_side_observation.planes.values():
-            if computed_plane.product_id == plane.product_id:
-                # a reference will suffice for the copy as there's no _id field for the Plane-level attributes
-                self._logger.debug(f'Copying computed plane information from {plane.product_id}')
-                plane.custom = computed_plane.custom
-                plane.energy = computed_plane.energy
-                plane.observable = computed_plane.observable
-                plane.polarization = computed_plane.polarization
-                plane.position = computed_plane.position
-                plane.time = computed_plane.time
+            # write the observation to the client which is configured for server-side metadata creation at the plane
+            # level read the computed metadata from that CAOM service and copy the Plane-level bits
+            if self._server_side_observation:
+                repo_update(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
+            else:
+                repo_create(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
+            self._server_side_observation = repo_get(
+                self._clients.server_side_ctor_client,
+                self._storage_name.collection,
+                self._storage_name.obs_id,
+                self._observable.metrics,
+            )
+            for computed_plane in self._server_side_observation.planes.values():
+                if computed_plane.product_id == plane.product_id:
+                    # a reference will suffice for the copy as there's no _id field for the Plane-level attributes
+                    self._logger.debug(f'Copying computed plane information from {plane.product_id}')
+                    plane.custom = computed_plane.custom
+                    plane.energy = computed_plane.energy
+                    plane.observable = computed_plane.observable
+                    plane.polarization = computed_plane.polarization
+                    plane.position = computed_plane.position
+                    plane.time = computed_plane.time
 
-                # do not clean up the Part, Chunk information, because it's used for cutout support
+                    # do not clean up the Part, Chunk information, because it's used for cutout support
 
     def _update_artifact(self, artifact):
         delete_these = []

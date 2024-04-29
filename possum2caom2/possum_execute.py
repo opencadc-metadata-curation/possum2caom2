@@ -108,9 +108,12 @@ class RCloneClients(ClientCollection):
         super().__init__(config)
         # TODO rclone credentials
         self._rclone_client = None
-        self._server_side_ctor_client = CAOM2RepoClient(
-            self._subject, config.logging_level, config.server_side_resource_id
-        )
+        if TaskType.SCRAPE in config.task_types:
+            self._logger.info(f'SCRAPE\'ing data - no clients will be initialized.')
+        else:
+            self._server_side_ctor_client = CAOM2RepoClient(
+                self._subject, config.logging_level, config.server_side_resource_id
+            )
 
     @property
     def rclone_client(self):

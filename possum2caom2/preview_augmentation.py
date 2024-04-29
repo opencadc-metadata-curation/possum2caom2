@@ -128,7 +128,7 @@ class PossumPreview(PreviewVisitor):
         return data
 
     def _get_pair_file(self, pair_fqn, pair_uri):
-        if not os.path.exists(pair_fqn):
+        if not os.path.exists(pair_fqn) and self._clients:
             if self._clients.data_client.info(pair_uri):
                 self._clients.data_client.get(os.path.dirname(pair_fqn), pair_uri)
             else:

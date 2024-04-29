@@ -4,7 +4,7 @@ working_directory: /data
 # this is the name of the proxy certificate file supplied 
 # to the container. It must be a fully-qualified name. 
 # One of netrc_filename or proxy_filename must have a value.
-proxy_file_name: /usr/src/app/cadcproxy.pem
+proxy_file_name: /data/cadcproxy.pem
 # operational value is ivo://cadc.nrc.ca/ams
 # - modifies entries on sc2.canfar.net
 resource_id: ivo://cadc.nrc.ca/sc2repo

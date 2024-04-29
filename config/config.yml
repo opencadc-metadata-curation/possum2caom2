@@ -1,4 +1,4 @@
-working_directory: /usr/src/app
+working_directory: /data
 # the netrc_filename value must be a fully-qualified name
 # netrc_filename: /usr/src/app/netrc
 # this is the name of the proxy certificate file supplied 
@@ -8,6 +8,7 @@ proxy_file_name: /usr/src/app/cadcproxy.pem
 # operational value is ivo://cadc.nrc.ca/ams
 # - modifies entries on sc2.canfar.net
 resource_id: ivo://cadc.nrc.ca/sc2repo
+server_side_resource_id: ivo://cadc.nrc.ca/sc2repo
 # resource_id: ivo://cadc.nrc.ca/ams
 # operational value is ivo://cadc.nrc.ca/ams/possum
 # - queries entries on sc2.canfar.net
@@ -18,14 +19,16 @@ storage_inventory_tap_resource_id: ivo://cadc.nrc.ca/global/luskan
 # file that contains the list of entries to process
 todo_file_name: todo.txt
 data_sources:
-  - /data
+  - pawsey0980/possum/tiles
 data_source_extensions:
   - .fits
+recurse_data_sources: True
+cleanup_files_when_storing: False
 # values True False
 # when True, the application will look for files with
 # .fits, .gz, .json endings as defining the work to be 
 # done.
-use_local_files: True
+use_local_files: False
 # values DEBUG INFO WARNING ERROR
 logging_level: DEBUG
 # values True False
@@ -53,7 +56,7 @@ retry_file_name: retries.txt
 progress_file_name: progress.txt
 #
 collection: POSSUM
-scheme: casda
+scheme: cadc
 preview_scheme: cadc
 #
 # CADC service execution metrics
@@ -85,6 +88,10 @@ meta_read_groups:
   - ivo://cadc.nrc.ca/gms?CADC
   - ivo://cadc.nrc.ca/gms?POSSUM-RW
   - ivo://cadc.nrc.ca/gms?POSSUM_Members
+lookup:
+  rename_version: v1
+  rename_prefix: PSM
+  rclone_include_pattern: "*[iqu].fits"
 # how to control the work that gets done
 # possible values are:
 # - scrape - read the headers, write out the xml - kind of a test mode
@@ -94,3 +101,4 @@ meta_read_groups:
 task_types: 
   - store
   - ingest
+  - modify

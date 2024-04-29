@@ -81,133 +81,28 @@ import logging
 import traceback
 
 from datetime import datetime, timedelta
-from os.path import basename
 from urllib import parse as parse
 
+from astropy_healpix import HEALPix
 from astropy.io import fits
 
-from caom2 import CalibrationLevel, DataProductType, ProductType, ReleaseType
-from caom2utils import FitsWcsParser
-from caom2pipe import caom_composable as cc
+from caom2 import CalibrationLevel, DataProductType, MultiPolygon, ProductType, ReleaseType, Point
+from caom2 import Polygon, Position, SegmentType, Vertex
+from caom2utils.blueprints import _to_float
+from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
-from caom2pipe.manage_composable import CadcException, make_datetime, StorageName, to_float, ValueRepairCache
+from caom2pipe import caom_composable as cc
+from caom2pipe.client_composable import repo_create, repo_get, repo_update
+from caom2pipe.manage_composable import CadcException, ValueRepairCache, write_obs_to_file
 
 
-__all__ = ['PossumName', 'mapping_factory']
-
-
-class PossumName(StorageName):
-    """
-    From AusSRC:
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_i_v1.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_q_v1.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_u_v1.fits
-
-    From POSSUM Group:
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_ampPeakPIfitEff.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_coeff0err.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_coeff0.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_coeff1err.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_coeff1.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_dAmpPeakPIfit.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_dFDFcorMAD.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_dPhiPeakPIfit_rm2.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_dPolAngle0Fit_deg.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_FDF_imag_dirty.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_FDF_real_dirty.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_FDF_tot_dirty.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_lam0Sq_m2.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_mad_chanwidth.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_max_freq.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_min_freq.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_peakFDFimagFit.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_peakFDFrealFit.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_phiPeakPIfit_rm2.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_polAngle0Fit_deg.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_RMSF1D.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_RMSF_FWHM.fits
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_snrPIfit.fits
-
-    Guessing on the rename for this:
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_RMSF_imag.fits.tar.gz
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_RMSF_real.fits.tar.gz
-    to:
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_RMSF_imag.fits.fz
-    PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_RMSF_real.fits.fz
-
-    """
-
-    POSSUM_NAME_PATTERN = '*'
-
-    def __init__(self, entry):
-        super(PossumName, self).__init__(file_name=basename(entry.replace('.header', '')), source_names=[entry])
-
-    @property
-    def file_uri(self):
-        """The CADC Storage URI for the file."""
-        current_scheme = self._get_scheme()
-        return self._get_uri(self._file_name.replace('.gz', '').replace('.header', ''), current_scheme)
-
-    @property
-    def prev(self):
-        """The preview file name for the file."""
-        return f'{self._obs_id}_{self._product_id}_prev.jpg'
-
-    @property
-    def thumb(self):
-        """The thumbnail file name for the file."""
-        return f'{self._obs_id}_{self._product_id}_prev_256.jpg'
-
-    def set_destination_uris(self):
-        for entry in self._source_names:
-            temp = parse.urlparse(entry)
-            base_name = basename(temp.path)
-            current_scheme = StorageName.scheme
-            if '_p3d_' in base_name or '_p1d_' in base_name:
-                current_scheme = StorageName.preview_scheme
-            if '.fits' in entry:
-                self._destination_uris.append(
-                    self._get_uri(base_name.replace('.gz', '').replace('.header', ''), current_scheme)
-                )
-            else:
-                self._destination_uris.append(self._get_uri(base_name, current_scheme))
-
-    def set_obs_id(self):
-        # picking the common prefix, e.g. 944MHz_pilot1_18asec_2226-5552_11268, and then re-organize it a bit
-        # leave off the "PSM" because collection is POSSUM
-        bits = self._file_id.split('_')
-        self._obs_id = f'{bits[2]}_{bits[3]}_{bits[4]}_{bits[5]}_{bits[1]}'
-
-    def set_product_id(self):
-        bits = self._file_id.split('_')
-        if '_p3d_' in self._file_id:
-            self._product_id = '3d_pipeline'
-        elif '_p1d_' in self._file_id:
-            self._product_id = '1d_pipeline'
-        elif bits[6] == 'i':
-            self._product_id = 'raw_i'
-        elif bits[6] == 'q' or bits[6] == 'u':
-            self._product_id = 'raw_qu'
-        elif bits[6] == 't0' or bits[6] == 't1':
-            # Cameron Van Eck - 23-10-23
-            # “mfs_i_t0" or “multifrequencysynthesis_i_t0” for the image product ProductID
-            self._product_id = f'multifrequencysynthesis_{bits[7]}_{bits[6]}'
-        else:
-            raise CadcException(f'Unexcepted file naming pattern {self._file_id}')
-
-    def _get_scheme(self):
-        if self._product_id in ['raw_i', 'raw_qu'] or self._product_id.startswith('multifrequencysynthesis_'):
-            result = StorageName.scheme
-        else:
-            result = StorageName.preview_scheme
-        return result
+__all__ = ['mapping_factory']
 
 
 class PossumValueRepair(ValueRepairCache):
     VALUE_REPAIR = {
-        'chunk.custom.axis.axis.cunit': {
-            'rad / m2': 'rad/m**2',
-        }
+        'chunk.custom.axis.axis.cunit': {'rad / m2': 'rad/m**2'},
+        'chunk.custom.axis.axis.ctype': {'FDEP': 'FARADAY'},
     }
 
     def __init__(self):
@@ -226,10 +121,10 @@ class Possum1DMapping(cc.TelescopeMapping):
         # Set release date to be 12 months after ingest. That’s the current POSSUM policy: data goes public 12
         # months after being generated. It doesn't have to be particularly precise: date of ingest + increment year by 1
         self._1_year_after = datetime.now() + timedelta(days=365)
+        self._server_side_observation = None
 
     def accumulate_blueprint(self, bp):
-        """Configure the telescope-specific ObsBlueprint at the CAOM model
-        Observation level."""
+        """Configure the telescope-specific ObsBlueprint at the CAOM model Observation level."""
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
         # JW - 17-10-23 - Use ASKAP
@@ -244,6 +139,7 @@ class Possum1DMapping(cc.TelescopeMapping):
         bp.set('Plane.dataProductType', '_get_data_product_type()')
         bp.set('Plane.metaRelease', self._1_year_after)
         bp.set('Plane.dataRelease', self._1_year_after)
+        bp.set('Plane.provenance.reference', 'https://askap.org/possum/')
         bp.set('Artifact.productType', ProductType.SCIENCE)
         bp.set('Artifact.releaseType', ReleaseType.DATA)
         self._logger.debug('Done accumulate_bp.')
@@ -253,7 +149,14 @@ class Possum1DMapping(cc.TelescopeMapping):
         (an n:n relationship between TDM attributes and CAOM attributes).
         """
         self._logger.debug(f'Begin update for {self._observation.observation_id}.')
+        write_obs_to_file(self._observation, './x.xml')
         try:
+            self._server_side_observation = repo_get(
+                self._clients.server_side_ctor_client,
+                self._storage_name.collection,
+                self._storage_name.obs_id,
+                self._observable.metrics,
+            )
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
             self._logger.debug('Done update.')
@@ -261,8 +164,8 @@ class Possum1DMapping(cc.TelescopeMapping):
         except CadcException as e:
             tb = traceback.format_exc()
             self._logger.debug(tb)
-            self._logger.error(e)
             self._logger.error(f'Terminating ingestion for {self._observation.observation_id}')
+            self._logger.error(e)
             return None
 
     def _get_data_product_type(self, ext):
@@ -297,6 +200,33 @@ class Possum1DMapping(cc.TelescopeMapping):
         if '_pilot' in self._storage_name.file_name:
             result = 'AS103'
         return result
+
+    def _update_plane(self, plane):
+        super()._update_plane(plane)
+        # write the observation to the client which is configured for server-side metadata creation at the plane level
+        # read the computed metadata from that CAOM service and copy the Plane-level bits
+        if self._server_side_observation:
+            repo_update(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
+        else:
+            repo_create(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
+        self._server_side_observation = repo_get(
+            self._clients.server_side_ctor_client,
+            self._storage_name.collection,
+            self._storage_name.obs_id,
+            self._observable.metrics,
+        )
+        for computed_plane in self._server_side_observation.planes.values():
+            if computed_plane.product_id == plane.product_id:
+                # a reference will suffice for the copy as there's no _id field for the Plane-level attributes
+                self._logger.debug(f'Copying computed plane information from {plane.product_id}')
+                plane.custom = computed_plane.custom
+                plane.energy = computed_plane.energy
+                plane.observable = computed_plane.observable
+                plane.polarization = computed_plane.polarization
+                plane.position = computed_plane.position
+                plane.time = computed_plane.time
+
+                # do not clean up the Part, Chunk information, because it's used for cutout support
 
     def _update_artifact(self, artifact):
         delete_these = []
@@ -336,18 +266,18 @@ class Possum1DMapping(cc.TelescopeMapping):
         if cd1_1 is None:
             pc1_1 = from_header.get('PC1_1')
             if pc1_1 is not None:
-                cdelt1 = to_float(from_header.get('CDELT1'))
+                cdelt1 = _to_float(from_header.get('CDELT1'))
                 if cdelt1 is None:
-                    cd1_1 = to_float(from_header.get('PC1_1'))
-                    cd1_2 = to_float(from_header.get('PC1_2'))
-                    cd2_1 = to_float(from_header.get('PC2_1'))
-                    cd2_2 = to_float(from_header.get('PC2_2'))
+                    cd1_1 = _to_float(from_header.get('PC1_1'))
+                    cd1_2 = _to_float(from_header.get('PC1_2'))
+                    cd2_1 = _to_float(from_header.get('PC2_1'))
+                    cd2_2 = _to_float(from_header.get('PC2_2'))
                 else:
-                    cdelt2 = to_float(from_header.get('CDELT2'))
-                    cd1_1 = cdelt1 * to_float(from_header.get('PC1_1'))
-                    cd1_2 = cdelt1 * to_float(from_header.get('PC1_2'))
-                    cd2_1 = cdelt2 * to_float(from_header.get('PC2_1'))
-                    cd2_2 = cdelt2 * to_float(from_header.get('PC2_2'))
+                    cdelt2 = _to_float(from_header.get('CDELT2'))
+                    cd1_1 = cdelt1 * _to_float(from_header.get('PC1_1'))
+                    cd1_2 = cdelt1 * _to_float(from_header.get('PC1_2'))
+                    cd2_1 = cdelt2 * _to_float(from_header.get('PC2_1'))
+                    cd2_2 = cdelt2 * _to_float(from_header.get('PC2_2'))
                 to_header['CD1_1'] = cd1_1
                 to_header['CD1_2'] = cd1_2
                 to_header['CD2_1'] = cd2_1
@@ -371,7 +301,6 @@ class InputTileMapping(Possum1DMapping):
         bp.set_default('Plane.provenance.reference', 'https://possum-survey.org/')
         bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
         bp.set_default('Plane.provenance.project', 'POSSUM')
-
         bp.configure_position_axes((1, 2))
         bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
@@ -379,7 +308,6 @@ class InputTileMapping(Possum1DMapping):
         bp.set_default('Chunk.energy.specsys', 'TOPOCENT')
 
         bp.configure_polarization_axis(4)
-
         self._logger.debug('Done accumulate_bp.')
 
     def _update_artifact(self, artifact):
@@ -451,7 +379,7 @@ class TaylorMapping(InputTileMapping):
         if origin:
             result = origin
             bits = origin.split(' ')
-            if len(bits) > 3:
+            if len(bits) >= 3:
                 other_bits = bits[2].split(':')
                 result = f'{bits[0]} {other_bits[0]}'
         return result
@@ -461,7 +389,7 @@ class TaylorMapping(InputTileMapping):
         result = None
         if origin:
             bits = origin.split(' ')
-            if len(bits) > 3:
+            if len(bits) >= 3:
                 other_bits = bits[2].split(':')
                 result = f'{bits[1]} {other_bits[1]}'
         return result
@@ -480,7 +408,7 @@ class TaylorMapping(InputTileMapping):
                     chunk.time_axis = None
 
 
-class OutputSpatialTemporal(Possum1DMapping):
+class OutputSpatial(Possum1DMapping):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -503,11 +431,7 @@ class OutputSpatialTemporal(Possum1DMapping):
         bp.add_attribute('Chunk.position.axis.function.cd22', 'CDELT2')
         bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
-        bp.configure_time_axis(5)
-        bp.set('Chunk.time.axis.axis.ctype', 'TIME')
-        bp.set('Chunk.time.axis.axis.cunit', 'd')
-        bp.set('Chunk.time.axis.function.naxis', 1)
-        bp.set('Chunk.time.axis.function.refCoord.pix', 0.5)
+        self._logger.debug('Done accumulate_bp.')
 
     def update(self, file_info):
         """Called to fill multiple CAOM model elements and/or attributes
@@ -520,23 +444,12 @@ class OutputSpatialTemporal(Possum1DMapping):
                     continue
                 for part in artifact.parts.values():
                     for chunk in part.chunks:
-                        if chunk.time is not None:
-                            chunk.time_axis = None
-                            if (
-                                chunk.time.axis is not None
-                                and chunk.time.axis.function is not None
-                                and chunk.time.axis.function.ref_coord is not None
-                            ):
-                                # because the CD matrix is present, but not correctly for TIME (index 5)
-                                chunk.time.axis.function.ref_coord.val = make_datetime(
-                                    self._headers[0].get('DATE-OBS')
-                                ).timestamp()
                         if chunk.energy is not None:
                             chunk.energy_axis = None
         return self._observation
 
 
-class Output3DMapping(OutputSpatialTemporal):
+class Output3DMapping(OutputSpatial):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -548,8 +461,12 @@ class Output3DMapping(OutputSpatialTemporal):
         bp.configure_custom_axis(4)
         self._logger.debug('Done accumulate_bp.')
 
+    # def _update_artifact(self, artifact):
+    #     for part in artifact.parts.values():
+    #         for chunk in part.chunks:
+    #             if chunk.custom is not
 
-class OutputFWHM(OutputSpatialTemporal):
+class OutputCustomSpatial(OutputSpatial):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
         super().__init__(storage_name, headers, clients, observable, observation, config)
 
@@ -558,21 +475,85 @@ class OutputFWHM(OutputSpatialTemporal):
         Observation level."""
         super().accumulate_blueprint(bp)
         bp.configure_custom_axis(3)
+        self._logger.debug('Done accumulate_bp.')
+
+
+class OutputFWHM(OutputCustomSpatial):
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+
+    def accumulate_blueprint(self, bp):
+        """Configure the telescope-specific ObsBlueprint at the CAOM model
+        Observation level."""
+        super().accumulate_blueprint(bp)
         bp.configure_polarization_axis(4)
         self._logger.debug('Done accumulate_bp.')
 
 
+class Catalog1DMapping(Possum1DMapping):
+
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+
+    def accumulate_blueprint(self, bp):
+        super().accumulate_blueprint(bp)
+        bp.set('DerivedObservation.members', {})
+        bp.set('Observation.algorithm.name', 'catalog')
+        bp.set('Plane.calibrationLevel', CalibrationLevel.PRODUCT)
+        bp.set('Plane.dataProductType', DataProductType.CATALOG)
+
+    def _update_plane(self, plane):
+        super()._update_plane(plane)
+        hp = HEALPix(nside=32, order='ring', frame='icrs')
+        vertices = []
+        points = []
+        vertex_start = None
+        # TODO - the healpix index is shifted by 1 in the rename, does it need to be unshifted
+        # by 1 here?
+        x = hp.boundaries_skycoord(healpix_index=self._storage_name.healpix_index, step=1)
+        for x1 in x:
+            for x2 in x1:
+                point = Point(x2.ra.value, x2.dec.value)
+                points.append(point)
+                if vertex_start:
+                    vertex = Vertex(x2.ra.value, x2.dec.value, SegmentType.LINE)
+                else:
+                    vertex = Vertex(x2.ra.value, x2.dec.value, SegmentType.MOVE)
+                    vertex_start = vertex
+                vertices.append(vertex)
+        vertex_end = Vertex(vertex_start.cval1, vertex_start.cval2, SegmentType.CLOSE)
+        vertices.append(vertex_end)
+        samples = MultiPolygon(vertices=vertices)
+        bounds = Polygon(points=points, samples=samples)
+        position = Position(
+            bounds=bounds, resolution=self._storage_name.spatial_resolution
+        )
+        plane.position = position
+
+
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
-    if storage_name.product_id == '1d_pipeline':
-        result = Possum1DMapping(storage_name, headers, clients, observable, observation, config)
+    if storage_name.is_bintable:
+        result = Catalog1DMapping(storage_name, headers, clients, observable, observation, config)
     elif storage_name.product_id == '3d_pipeline':
+        naxis = None
+        if headers and len(headers) > 0:
+            naxis = headers[0].get('NAXIS')
         if '_FWHM' in storage_name.file_name:
-            result = OutputFWHM(storage_name, headers, clients, observable, observation, config)
+            if naxis:
+                if naxis == 3:
+                    result = OutputCustomSpatial(storage_name, headers, clients, observable, observation, config)
+                elif naxis == 4:
+                    result = OutputFWHM(storage_name, headers, clients, observable, observation, config)
+                else:
+                    raise CadcException(f'No mapping for {storage_name.file_name}.')
         else:
-            result = Output3DMapping(storage_name, headers, clients, observable, observation, config)
+            if naxis and naxis == 2:
+                result = OutputSpatial(storage_name, headers, clients, observable, observation, config)
+            else:
+                result = Output3DMapping(storage_name, headers, clients, observable, observation, config)
     elif storage_name.product_id.startswith('multifrequencysynthesis_'):
         result = TaylorMapping(storage_name, headers, clients, observable, observation, config)
     else:
         result = InputTileMapping(storage_name, headers, clients, observable, observation, config)
-    logging.debug(f'Constructed {result.__class__.__name__} for mapping.')
+    logging.info(f'Constructed {result.__class__.__name__} for mapping {storage_name.file_name}.')
     return result

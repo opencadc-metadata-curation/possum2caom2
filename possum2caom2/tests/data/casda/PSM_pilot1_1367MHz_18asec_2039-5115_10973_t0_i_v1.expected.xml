@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="a0e8b366-679b-467b-b35f-ecc23b19c536">
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="b0e8b366-679b-467b-b35f-ecc23b19c536">
   <caom2:collection>POSSUM</caom2:collection>
-  <caom2:observationID>1367MHz_18asec_2039-5115_10973_pilot1</caom2:observationID>
+  <caom2:observationID>1367MHz_18asec_2039-5115_10973_pilot1_v1</caom2:observationID>
   <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
   <caom2:metaReadGroups>
     <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
@@ -25,7 +25,7 @@
     <caom2:name>ASKAP</caom2:name>
   </caom2:instrument>
   <caom2:planes>
-    <caom2:plane caom2:id="d9ab3460-c35e-426e-b8bc-3fcace373e7d">
+    <caom2:plane caom2:id="b9ab3460-c35e-426e-b8bc-3fcace373e7d">
       <caom2:productID>multifrequencysynthesis_i_t0</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
@@ -48,8 +48,102 @@
         <caom2:reference>https://possum-survey.org/</caom2:reference>
         <caom2:lastExecuted>2023-06-14T05:01:28.388035</caom2:lastExecuted>
       </caom2:provenance>
+      <caom2:position>
+        <caom2:bounds xsi:type="caom2:Polygon">
+          <caom2:points>
+            <caom2:point>
+              <caom2:cval1>311.5409968722914</caom2:cval1>
+              <caom2:cval2>-51.25580694879139</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>309.6026367790574</caom2:cval1>
+              <caom2:cval2>-52.801853757328644</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>308.0794584654851</caom2:cval1>
+              <caom2:cval2>-51.25580694879142</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>310.00244145600277</caom2:cval1>
+              <caom2:cval2>-49.702390351238904</caom2:cval2>
+            </caom2:point>
+          </caom2:points>
+          <caom2:samples>
+            <caom2:vertices>
+              <caom2:vertex>
+                <caom2:cval1>311.5409968722914</caom2:cval1>
+                <caom2:cval2>-51.255806948791424</caom2:cval2>
+                <caom2:type>2</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>309.6026367790574</caom2:cval1>
+                <caom2:cval2>-52.801853757328644</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>308.0794584654851</caom2:cval1>
+                <caom2:cval2>-51.255806948791424</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>310.00244145600277</caom2:cval1>
+                <caom2:cval2>-49.70239035123886</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>0.0</caom2:cval1>
+                <caom2:cval2>0.0</caom2:cval2>
+                <caom2:type>0</caom2:type>
+              </caom2:vertex>
+            </caom2:vertices>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:dimension>
+          <caom2:naxis1>2048</caom2:naxis1>
+          <caom2:naxis2>2048</caom2:naxis2>
+        </caom2:dimension>
+        <caom2:resolution>18.0</caom2:resolution>
+        <caom2:sampleSize>3.4958281476144037</caom2:sampleSize>
+      </caom2:position>
+      <caom2:energy>
+        <caom2:bounds>
+          <caom2:lower>0.21922814462929224</caom2:lower>
+          <caom2:upper>0.21922814478960642</caom2:upper>
+          <caom2:samples>
+            <caom2:sample>
+              <caom2:lower>0.21922814462929224</caom2:lower>
+              <caom2:upper>0.21922814478960642</caom2:upper>
+            </caom2:sample>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:dimension>1</caom2:dimension>
+        <caom2:sampleSize>1.6031417859885266e-10</caom2:sampleSize>
+        <caom2:energyBands>
+          <caom2:emBand>Radio</caom2:emBand>
+        </caom2:energyBands>
+      </caom2:energy>
+      <caom2:time>
+        <caom2:bounds>
+          <caom2:lower>58746.379</caom2:lower>
+          <caom2:upper>58747.379</caom2:upper>
+          <caom2:samples>
+            <caom2:sample>
+              <caom2:lower>58746.379</caom2:lower>
+              <caom2:upper>58747.379</caom2:upper>
+            </caom2:sample>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:dimension>1</caom2:dimension>
+        <caom2:sampleSize>1.0</caom2:sampleSize>
+      </caom2:time>
+      <caom2:polarization>
+        <caom2:states>
+          <caom2:state>I</caom2:state>
+        </caom2:states>
+        <caom2:dimension>1</caom2:dimension>
+      </caom2:polarization>
       <caom2:artifacts>
-        <caom2:artifact caom2:id="6a49498a-aeb0-4a18-8eb2-0abc7a57ec69">
+        <caom2:artifact caom2:id="ba49498a-aeb0-4a18-8eb2-0abc7a57ec69">
           <caom2:uri>cadc:POSSUM/PSM_pilot1_1367MHz_18asec_2039-5115_10973_t0_i_v1.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
@@ -57,10 +151,10 @@
           <caom2:contentLength>8505</caom2:contentLength>
           <caom2:contentChecksum>md5:add1c49689f2be8274d148ad5737a09b</caom2:contentChecksum>
           <caom2:parts>
-            <caom2:part caom2:id="0f62512e-8ef5-4cbd-85c2-2780b6805883">
+            <caom2:part caom2:id="bf62512e-8ef5-4cbd-85c2-2780b6805883">
               <caom2:name>0</caom2:name>
               <caom2:chunks>
-                <caom2:chunk caom2:id="eabdeefc-697c-4bc6-9efb-6696c8c28f4b">
+                <caom2:chunk caom2:id="babdeefc-697c-4bc6-9efb-6696c8c28f4b">
                   <caom2:naxis>4</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>

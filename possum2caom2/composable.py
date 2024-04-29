@@ -84,7 +84,8 @@ from caom2pipe.manage_composable import Config
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.run_composable import run_by_state, run_by_todo
 from caom2pipe.transfer_composable import VoScienceTransfer
-from possum2caom2 import fits2caom2_augmentation, main_app, preview_augmentation
+from possum2caom2 import fits2caom2_augmentation, preview_augmentation, storage_name
+from possum2caom2.possum_execute import remote_execution
 from vos import Client
 
 
@@ -107,7 +108,7 @@ def _run():
     clients.vo_client = vo_client
     if config.use_vos:
         source_transfer = VoScienceTransfer(vo_client)
-    name_builder = EntryBuilder(main_app.PossumName)
+    name_builder = EntryBuilder(storage_name.PossumName)
     return run_by_todo(
         config=config,
         name_builder=name_builder,
@@ -135,7 +136,7 @@ def _run_incremental():
     config = Config()
     config.get_executors()
     data_source = ListDirTimeBoxDataSource(config)
-    name_builder = EntryBuilder(main_app.PossumName)
+    name_builder = EntryBuilder(storage_name.PossumName)
     return run_by_state(
         config=config,
         sources=[data_source],
@@ -149,6 +150,23 @@ def run_incremental():
     """Wraps _run_incremental in exception handling."""
     try:
         _run_incremental()
+        sys.exit(0)
+    except Exception as e:
+        logging.error(e)
+        tb = traceback.format_exc()
+        logging.debug(tb)
+        sys.exit(-1)
+
+
+def _run_remote():
+    """Uses a state file with a timestamp to identify work to be done at Pawsey s3 system."""
+    return remote_execution()
+
+
+def run_remote():
+    """Wraps _run_remote in exception handling."""
+    try:
+        _run_remote()
         sys.exit(0)
     except Exception as e:
         logging.error(e)

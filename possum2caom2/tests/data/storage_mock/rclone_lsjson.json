@@ -1,0 +1,6 @@
+[
+{"Path":"components/0049-51/survey/i/PSM.0049-51.11092.i.fits","Name":"PSM.band1.0049-51.11092.i.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T20:10:04.000000000Z","IsDir":false,"Tier":"STANDARD"},
+{"Path":"components/1136-64/survey/q/PSM.1136-64.11836.q.fits","Name":"PSM.band2.1136-64.11836.q.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T21:57:09.000000000Z","IsDir":false,"Tier":"STANDARD"},
+{"Path":"components/1136-64/survey/u/PSM.1136-64.11485.u.fits","Name":"PSM.band2.1136-64.11485.u.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-10-28T22:06:11.000000000Z","IsDir":false,"Tier":"STANDARD"},
+{"Path":"components/0049-51/survey/i/PSM.0049-51.10887.i.fits","Name":"PSM.band1.0049-51.10887.i.fits","Size":4831848000,"MimeType":"image/fits","ModTime":"2023-11-18T20:47:50.000000000Z","IsDir":false,"Tier":"STANDARD"}
+]

@@ -69,21 +69,23 @@
 from glob import glob
 from os.path import basename
 
-from possum2caom2 import PossumName
+from possum2caom2.storage_name import PossumName
 
 
 def pytest_generate_tests(metafunc):
     test_data_dir = f'{metafunc.config.invocation_dir}/data'
-    obs_id_list = glob(f'{test_data_dir}/**/*.fits.header')
+    obs_id_list = glob(f'{test_data_dir}/possum/*.fits.header')
     metafunc.parametrize('test_name', obs_id_list)
 
 
 def test_storage_name(test_config, test_name):
     test_obs_ids = [
-        '1368MHz_18asec_2031-5249_11073_pilot1',
-        '1367MHz_18asec_2013-5553_11261_pilot1',
-        '944MHz_18asec_2226-5552_11268_pilot1',
-        '1367MHz_18asec_2039-5115_10973_pilot1',
+        '1368MHz_18asec_2031-5249_11073_pilot1_v1',
+        '1367MHz_18asec_2013-5553_11261_pilot1_v1',
+        '944MHz_18asec_2226-5552_11268_pilot1_v1',
+        '1367MHz_18asec_2039-5115_10973_pilot1_v1',
+        '1368MHz_18asec_2013-5552_11261_pilot1_v2',
+        '944MHz_18asec_2013-5553_11261_v1',
     ]
     test_f_name = basename(test_name)
     test_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name.replace(".header", "")}'

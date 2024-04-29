@@ -66,9 +66,10 @@
 # ***********************************************************************
 #
 
-from mock import patch
+from mock import Mock, patch, PropertyMock
 
-from possum2caom2 import fits2caom2_augmentation, main_app
+from possum2caom2.storage_name import PossumName
+from possum2caom2 import fits2caom2_augmentation
 from caom2.diff import get_differences
 from caom2pipe import astro_composable as ac
 from caom2pipe import manage_composable as mc
@@ -86,19 +87,30 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize('test_name', obs_id_list)
 
 
+@patch('possum2caom2.possum_execute.RCloneClients')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
-def test_main_app(header_mock, test_data_dir, test_config, test_name):
-    # logging.getLogger('root').setLevel(logging.DEBUG)
+def test_main_app(header_mock, clients_mock, test_data_dir, test_config, test_name):
     header_mock.side_effect = ac.make_headers_from_file
-    storage_name = main_app.PossumName(entry=test_name)
+    clients_mock.metadata_client.read.return_value = None
+
+    def _sandbox_mock(_, obs_id):
+        return mc.read_obs_from_file(test_name.replace('.fits.header', '.sc2.xml'))
+
+    clients_mock.server_side_ctor_client.read.side_effect = _sandbox_mock
+    storage_name = PossumName(entry=test_name)
     metadata_reader = rdc.FileMetadataReader()
     metadata_reader.set(storage_name)
     file_type = 'application/fits'
     metadata_reader.file_info[storage_name.file_uri].file_type = file_type
+    test_observable = Mock()
+    meta_producer_mock = PropertyMock(return_value='test_possum/0.0.0')
+    type(test_observable).meta_producer = meta_producer_mock
     kwargs = {
         'storage_name': storage_name,
         'metadata_reader': metadata_reader,
         'config': test_config,
+        'clients': clients_mock,
+        'observable': test_observable,
     }
     expected_fqn = f'{test_name.replace(".fits.header", "")}.expected.xml'
     in_fqn = expected_fqn.replace('.expected', '.in')

@@ -91,6 +91,11 @@ def test_config():
         'ivo://cadc.nrc.ca/gms?POSSUM_Members',
     ]
     config.data_read_groups = config.meta_read_groups
+    config.lookup = {
+        'rename_version': 'v1',
+        'rename_prefix': 'PSM',
+        'rclone_include_pattern': '*[iqu].fits',
+    }
     StorageName.collection = config.collection
     StorageName.preview_scheme = config.preview_scheme
     StorageName.scheme = config.scheme

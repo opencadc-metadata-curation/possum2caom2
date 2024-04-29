@@ -69,7 +69,8 @@ import glob
 import os
 
 from caom2pipe import manage_composable as mc
-from possum2caom2 import main_app, preview_augmentation
+from possum2caom2.storage_name import PossumName
+from possum2caom2 import preview_augmentation
 
 
 TEST_FILES_DIR = '/test_files'
@@ -92,7 +93,7 @@ def test_visit(test_data_dir, test_config, tmp_path):
     for key, value in test_files.items():
         obs = mc.read_obs_from_file(f'{test_data_dir}/casda/{key}')
         for f_name in value:
-            test_name = main_app.PossumName(f'{TEST_FILES_DIR}/{f_name}')
+            test_name = PossumName(f'{TEST_FILES_DIR}/{f_name}')
             kwargs['storage_name'] = test_name
 
             try:

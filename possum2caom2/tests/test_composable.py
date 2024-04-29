@@ -73,7 +73,7 @@ from mock import patch, PropertyMock
 
 from caom2pipe.data_source_composable import StateRunnerMeta
 from caom2pipe.manage_composable import Config, State, StorageName
-from possum2caom2.main_app import PossumName
+from possum2caom2.storage_name import PossumName
 from possum2caom2 import composable
 
 
@@ -99,7 +99,7 @@ def test_run_by_state(clients_mock, do_one_mock, end_time_mock, get_work_mock, t
         Config.write_to_file(test_config)
 
         test_f_name = 'PSM_pilot1_944MHz_18asec_2226-5552_11268_i_v1.fits'
-        test_obs_id = '944MHz_18asec_2226-5552_11268_pilot1'
+        test_obs_id = '944MHz_18asec_2226-5552_11268_pilot1_v1'
         do_one_mock.return_value = 0
         get_work_mock.side_effect = lambda x, y, z: [
             StateRunnerMeta(

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="d955aee6-2164-4930-a1c9-72505a43148b">
   <caom2:collection>POSSUM</caom2:collection>
-  <caom2:observationID>1367MHz_18asec_2013-5553_11261_pilot1</caom2:observationID>
+  <caom2:observationID>1367MHz_18asec_2013-5553_11261_pilot1_v1</caom2:observationID>
   <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
   <caom2:metaReadGroups>
     <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
@@ -49,6 +49,100 @@
         <caom2:producer>AusSRC</caom2:producer>
         <caom2:lastExecuted>2023-05-12T04:44:25.170836</caom2:lastExecuted>
       </caom2:provenance>
+      <caom2:position>
+        <caom2:bounds xsi:type="caom2:Polygon">
+          <caom2:points>
+            <caom2:point>
+              <caom2:cval1>305.2202573338924</caom2:cval1>
+              <caom2:cval2>-55.8733504352422</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>302.7302690720472</caom2:cval1>
+              <caom2:cval2>-57.39952351553043</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>301.30721391750205</caom2:cval1>
+              <caom2:cval2>-55.87335043524217</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>303.7527466338834</caom2:cval1>
+              <caom2:cval2>-54.34091232813225</caom2:cval2>
+            </caom2:point>
+          </caom2:points>
+          <caom2:samples>
+            <caom2:vertices>
+              <caom2:vertex>
+                <caom2:cval1>305.2202573338924</caom2:cval1>
+                <caom2:cval2>-55.87335043524217</caom2:cval2>
+                <caom2:type>2</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>302.7302690720472</caom2:cval1>
+                <caom2:cval2>-57.3995235155304</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>301.30721391750205</caom2:cval1>
+                <caom2:cval2>-55.87335043524217</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>303.7527466338834</caom2:cval1>
+                <caom2:cval2>-54.340912328132276</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>0.0</caom2:cval1>
+                <caom2:cval2>0.0</caom2:cval2>
+                <caom2:type>0</caom2:type>
+              </caom2:vertex>
+            </caom2:vertices>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:dimension>
+          <caom2:naxis1>2048</caom2:naxis1>
+          <caom2:naxis2>2048</caom2:naxis2>
+        </caom2:dimension>
+        <caom2:resolution>18.0</caom2:resolution>
+        <caom2:sampleSize>3.4958281476147617</caom2:sampleSize>
+      </caom2:position>
+      <caom2:energy>
+        <caom2:bounds>
+          <caom2:lower>0.21922814462929224</caom2:lower>
+          <caom2:upper>0.21922814478960642</caom2:upper>
+          <caom2:samples>
+            <caom2:sample>
+              <caom2:lower>0.21922814462929224</caom2:lower>
+              <caom2:upper>0.21922814478960642</caom2:upper>
+            </caom2:sample>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:dimension>1</caom2:dimension>
+        <caom2:sampleSize>1.6031417859885266e-10</caom2:sampleSize>
+        <caom2:energyBands>
+          <caom2:emBand>Radio</caom2:emBand>
+        </caom2:energyBands>
+      </caom2:energy>
+      <caom2:time>
+        <caom2:bounds>
+          <caom2:lower>58745.41899768517</caom2:lower>
+          <caom2:upper>58746.41899768517</caom2:upper>
+          <caom2:samples>
+            <caom2:sample>
+              <caom2:lower>58745.41899768517</caom2:lower>
+              <caom2:upper>58746.41899768517</caom2:upper>
+            </caom2:sample>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:dimension>1</caom2:dimension>
+        <caom2:sampleSize>1.0</caom2:sampleSize>
+      </caom2:time>
+      <caom2:polarization>
+        <caom2:states>
+          <caom2:state>I</caom2:state>
+        </caom2:states>
+        <caom2:dimension>1</caom2:dimension>
+      </caom2:polarization>
       <caom2:artifacts>
         <caom2:artifact caom2:id="84ed1070-b3f0-4c85-8138-813eeb992e04">
           <caom2:uri>cadc:POSSUM/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits</caom2:uri>

@@ -86,40 +86,38 @@ from possum2caom2 import composable
     new_callable=PropertyMock(return_value=datetime(year=2019, month=3, day=7, hour=19, minute=5)),
 )
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
-@patch('caom2pipe.client_composable.ClientCollection')
-def test_run_by_state(clients_mock, do_one_mock, end_time_mock, get_work_mock, test_config, tmp_path):
-    orig_cwd = os.getcwd()
-    try:
-        os.chdir(tmp_path.as_posix())
-        test_config.interval = 3600
-        test_config.logging_level = 'DEBUG'
-        test_config.change_working_directory(tmp_path.as_posix())
-        start_time = datetime(year=2019, month=3, day=3, hour=19, minute=5)
-        State.write_bookmark(test_config.state_fqn, test_config.bookmark, start_time)
-        Config.write_to_file(test_config)
+@patch('possum2caom2.possum_execute.RCloneClients')
+def test_run_by_state(clients_mock, do_one_mock, end_time_mock, get_work_mock, test_config, tmp_path, change_test_dir):
+    test_config.interval = 3600
+    test_config.logging_level = 'DEBUG'
+    test_config.change_working_directory(tmp_path.as_posix())
+    test_config.proxy_file_name = 'test_proxy.pem'
+    start_time = datetime(year=2019, month=3, day=3, hour=19, minute=5)
+    State.write_bookmark(test_config.state_fqn, test_config.bookmark, start_time)
+    Config.write_to_file(test_config)
+    with open(test_config.proxy_fqn, 'w') as f:
+        f.write('test content')
 
-        test_f_name = 'PSM_pilot1_944MHz_18asec_2226-5552_11268_i_v1.fits'
-        test_obs_id = '944MHz_18asec_2226-5552_11268_pilot1_v1'
-        do_one_mock.return_value = 0
-        get_work_mock.side_effect = lambda x, y, z: [
-            StateRunnerMeta(
-                os.path.join(os.path.join(tmp_path, 'test_files'), test_f_name),
-                datetime(year=2019, month=10, day=23, hour=16, minute=27, second=19),
-            ),
-        ]
+    test_f_name = 'PSM_pilot1_944MHz_18asec_2226-5552_11268_i_v1.fits'
+    test_obs_id = '944MHz_18asec_2226-5552_11268_pilot1_v1'
+    do_one_mock.return_value = 0
+    get_work_mock.side_effect = lambda x, y, z: [
+        StateRunnerMeta(
+            os.path.join(os.path.join(tmp_path, 'test_files'), test_f_name),
+            datetime(year=2019, month=10, day=23, hour=16, minute=27, second=19),
+        ),
+    ]
 
-        # execution
-        test_result = composable._run_incremental()
-        assert test_result == 0, 'mocking correct execution'
-        assert do_one_mock.called, 'should have been called'
-        args, kwargs = do_one_mock.call_args
-        test_storage = args[0]
-        assert isinstance(test_storage, PossumName), type(test_storage)
-        assert test_storage.obs_id == test_obs_id, f'wrong obs id {test_storage.obs_id}'
-        assert test_storage.file_name == test_f_name, 'wrong file name'
-        assert test_storage.file_uri == f'{test_config.scheme}:{test_config.collection}/{test_f_name}', 'wrong uri'
-    finally:
-        os.chdir(orig_cwd)
+    # execution
+    test_result = composable._run_incremental()
+    assert test_result == 0, 'mocking correct execution'
+    assert do_one_mock.called, 'should have been called'
+    args, kwargs = do_one_mock.call_args
+    test_storage = args[0]
+    assert isinstance(test_storage, PossumName), type(test_storage)
+    assert test_storage.obs_id == test_obs_id, f'wrong obs id {test_storage.obs_id}'
+    assert test_storage.file_name == test_f_name, 'wrong file name'
+    assert test_storage.file_uri == f'{test_config.scheme}:{test_config.collection}/{test_f_name}', 'wrong uri'
 
 
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')

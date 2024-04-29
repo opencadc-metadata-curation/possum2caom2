@@ -78,14 +78,13 @@ import logging
 import sys
 import traceback
 
-from caom2pipe.client_composable import ClientCollection
 from caom2pipe.data_source_composable import ListDirTimeBoxDataSource
 from caom2pipe.manage_composable import Config
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.run_composable import run_by_state, run_by_todo
 from caom2pipe.transfer_composable import VoScienceTransfer
 from possum2caom2 import fits2caom2_augmentation, preview_augmentation, storage_name
-from possum2caom2.possum_execute import remote_execution
+from possum2caom2.possum_execute import RCloneClients, remote_execution
 from vos import Client
 
 
@@ -104,7 +103,7 @@ def _run():
     config.get_executors()
     source_transfer = None
     vo_client = Client(vospace_certfile=config.proxy_fqn)
-    clients = ClientCollection(config)
+    clients = RCloneClients(config)
     clients.vo_client = vo_client
     if config.use_vos:
         source_transfer = VoScienceTransfer(vo_client)
@@ -137,12 +136,14 @@ def _run_incremental():
     config.get_executors()
     data_source = ListDirTimeBoxDataSource(config)
     name_builder = EntryBuilder(storage_name.PossumName)
+    clients = RCloneClients(config)
     return run_by_state(
         config=config,
         sources=[data_source],
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
         name_builder=name_builder,
+        clients=clients,
     )
 
 

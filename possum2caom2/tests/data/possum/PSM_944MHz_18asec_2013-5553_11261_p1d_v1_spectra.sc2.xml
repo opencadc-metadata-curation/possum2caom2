@@ -1,0 +1,47 @@
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:DerivedObservation" caom2:id="02691f86-7b3a-4e43-aac1-2348c4e10e69" caom2:lastModified="2024-04-29T16:49:45.265" caom2:maxLastModified="2024-04-29T16:49:45.265" caom2:metaChecksum="md5:43ef0ced77c2f2be99f7dcd07a265479" caom2:accMetaChecksum="md5:46f9327238ac722d938140c2a4032d73" caom2:metaProducer="test_possum/0.0.0">
+  <caom2:collection>POSSUM</caom2:collection>
+  <caom2:observationID>944MHz_18asec_2013-5553_11261_v1</caom2:observationID>
+  <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
+  <caom2:metaReadGroups>
+    <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>
+    <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
+    <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
+  </caom2:metaReadGroups>
+  <caom2:algorithm>
+    <caom2:name>catalog</caom2:name>
+  </caom2:algorithm>
+  <caom2:planes>
+    <caom2:plane caom2:id="3891a264-eea4-41f8-a67e-5ae27ec9a4c0" caom2:lastModified="2024-04-29T16:49:45.265" caom2:maxLastModified="2024-04-29T16:49:45.265" caom2:metaChecksum="md5:9b5fefa7594a2deb6c8a5efa0a1162cb" caom2:accMetaChecksum="md5:deb9e261e07e4c88c61abe13e6d64380" caom2:metaProducer="test_possum/0.0.0">
+      <caom2:productID>1d_pipeline</caom2:productID>
+      <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
+      <caom2:metaReadGroups>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
+      </caom2:metaReadGroups>
+      <caom2:dataRelease>2025-01-01T00:00:00.000</caom2:dataRelease>
+      <caom2:dataReadGroups>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
+      </caom2:dataReadGroups>
+      <caom2:dataProductType>http://www.opencadc.org/caom2/DataProductType#catalog</caom2:dataProductType>
+      <caom2:calibrationLevel>3</caom2:calibrationLevel>
+      <caom2:position/>
+      <caom2:energy/>
+      <caom2:time/>
+      <caom2:polarization/>
+      <caom2:artifacts>
+        <caom2:artifact caom2:id="c872f822-7485-45bc-a71e-9573cf1042ff" caom2:lastModified="2024-04-29T16:49:45.265" caom2:maxLastModified="2024-04-29T16:49:45.265" caom2:metaChecksum="md5:439516b3da316757ac979216042b6dda" caom2:accMetaChecksum="md5:49ec98f86c9abbd8b2c9fbec85d7c997" caom2:metaProducer="test_possum/0.0.0">
+          <caom2:uri>cadc:POSSUM/PSM_944MHz_18asec_2013-5553_11261_p1d_v1_spectra.fits</caom2:uri>
+          <caom2:productType>science</caom2:productType>
+          <caom2:releaseType>data</caom2:releaseType>
+          <caom2:contentType>application/fits</caom2:contentType>
+          <caom2:contentLength>5560</caom2:contentLength>
+          <caom2:contentChecksum>md5:5590106137f46eea1f32f55070153dc1</caom2:contentChecksum>
+          <caom2:parts/>
+        </caom2:artifact>
+      </caom2:artifacts>
+    </caom2:plane>
+  </caom2:planes>
+</caom2:Observation>

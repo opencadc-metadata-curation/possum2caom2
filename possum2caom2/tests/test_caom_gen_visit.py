@@ -90,10 +90,13 @@ def pytest_generate_tests(metafunc):
 @patch('possum2caom2.possum_execute.RCloneClients')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 def test_main_app(header_mock, clients_mock, test_data_dir, test_config, test_name):
-    # logging.getLogger('root').setLevel(logging.DEBUG)
     header_mock.side_effect = ac.make_headers_from_file
     clients_mock.metadata_client.read.return_value = None
-    clients_mock.server_side_ctor_client.read.return_value = None
+
+    def _sandbox_mock(_, obs_id):
+        return mc.read_obs_from_file(test_name.replace('.fits.header', '.sc2.xml'))
+
+    clients_mock.server_side_ctor_client.read.side_effect = _sandbox_mock
     storage_name = PossumName(entry=test_name)
     metadata_reader = rdc.FileMetadataReader()
     metadata_reader.set(storage_name)

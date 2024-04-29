@@ -371,35 +371,24 @@ def test_state_runner_nominal_multiple_files(
     assert test_result is not None, 'expect a result'
     assert test_result == 0, 'happy path'
     assert test_organizer.mock_calls == [call.choose], 'organizer'
-    # assert test_clients.mock_calls == [
-    #     call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
-    #     call.server_side_ctor_client.create(ANY),
-    #     call.server_side_ctor_client.read('POSSUM', '0049-51_11092'),
-    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
-    #     call.server_side_ctor_client.create(ANY),
-    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11836'),
-    #     call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11836_q_v1.fits'),
-    #     call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11836_q'),
-    #     call.metadata_client.create(ANY),
-    #     call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1511MHz_20asec_0049-51_11092_i_v1.fits'),
-    #     call.metadata_client.read('POSSUM', '1511MHz_20asec_0049-51_11092_i'),
-    #     call.metadata_client.create(ANY),
-    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-    #     call.server_side_ctor_client.create(ANY),
-    #     call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-    #     call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1511MHz_20asec_1136-64_11485_u_v1.fits'),
-    #     call.metadata_client.read('POSSUM', '1511MHz_20asec_1136-64_11485_u'),
-    #     call.metadata_client.create(ANY),
-    # ], f'clients {test_clients.mock_calls}'
     assert test_clients.mock_calls == [
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_i_v1.fits'),
         call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
+        call.server_side_ctor_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         call.metadata_client.create(ANY),
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1367MHz_18asec_2013-5553_11261_i_v1.fits'),
         call.metadata_client.read('POSSUM', '1367MHz_18asec_2013-5553_11261_v1'),
+        call.server_side_ctor_client.read('POSSUM', '1367MHz_18asec_2013-5553_11261_v1'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '1367MHz_18asec_2013-5553_11261_v1'),
         call.metadata_client.create(ANY),
         call.data_client.put(f'{tmp_path}/{time_box_dir_name_2}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
         call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
+        call.server_side_ctor_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'
@@ -487,14 +476,14 @@ def test_state_runner_clean_up_when_storing_with_retry(
     assert test_result == -1, 'happy path with a retry'
     assert test_organizer.mock_calls == [call.choose], 'organizer'
     assert test_clients.mock_calls == [
-        # call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
-        # call.server_side_ctor_client.create(ANY),
-        # call.server_side_ctor_client.read('POSSUM', '1136-64_11485'),
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
         call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         # because there's a retry
         call.data_client.put(f'{tmp_path}/{time_box_dir_name}', f'cadc:POSSUM/PSM_1368MHz_18asec_2031-5249_11073_q_v1.fits'),
         call.metadata_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
+        call.server_side_ctor_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
+        call.server_side_ctor_client.create(ANY),
+        call.server_side_ctor_client.read('POSSUM', '1368MHz_18asec_2031-5249_11073_v1'),
         call.metadata_client.create(ANY),
     ], f'clients {test_clients.mock_calls}'
     assert exists(test_config.rejected_fqn), f'rejected {test_config.rejected_fqn}'

@@ -86,14 +86,14 @@ from urllib import parse as parse
 from astropy_healpix import HEALPix
 from astropy.io import fits
 
-from caom2 import CalibrationLevel, DataProductType, DerivedObservation, MultiPolygon, ProductType, ReleaseType, Point
+from caom2 import CalibrationLevel, DataProductType, MultiPolygon, ProductType, ReleaseType, Point
 from caom2 import Polygon, Position, SegmentType, Vertex
 from caom2utils.blueprints import _to_float
 from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
 from caom2pipe import caom_composable as cc
-from caom2pipe.client_composable import repo_get
-from caom2pipe.manage_composable import CadcException, ValueRepairCache
+from caom2pipe.client_composable import repo_create, repo_get, repo_update
+from caom2pipe.manage_composable import CadcException, ValueRepairCache, write_obs_to_file
 
 
 __all__ = ['mapping_factory']
@@ -101,9 +101,8 @@ __all__ = ['mapping_factory']
 
 class PossumValueRepair(ValueRepairCache):
     VALUE_REPAIR = {
-        'chunk.custom.axis.axis.cunit': {
-            'rad / m2': 'rad/m**2',
-        }
+        'chunk.custom.axis.axis.cunit': {'rad / m2': 'rad/m**2'},
+        'chunk.custom.axis.axis.ctype': {'FDEP': 'FARADAY'},
     }
 
     def __init__(self):
@@ -122,6 +121,7 @@ class Possum1DMapping(cc.TelescopeMapping):
         # Set release date to be 12 months after ingest. That’s the current POSSUM policy: data goes public 12
         # months after being generated. It doesn't have to be particularly precise: date of ingest + increment year by 1
         self._1_year_after = datetime.now() + timedelta(days=365)
+        self._server_side_observation = None
 
     def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model Observation level."""
@@ -149,7 +149,14 @@ class Possum1DMapping(cc.TelescopeMapping):
         (an n:n relationship between TDM attributes and CAOM attributes).
         """
         self._logger.debug(f'Begin update for {self._observation.observation_id}.')
+        write_obs_to_file(self._observation, './x.xml')
         try:
+            self._server_side_observation = repo_get(
+                self._clients.server_side_ctor_client,
+                self._storage_name.collection,
+                self._storage_name.obs_id,
+                self._observable.metrics,
+            )
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
             self._logger.debug('Done update.')
@@ -157,8 +164,8 @@ class Possum1DMapping(cc.TelescopeMapping):
         except CadcException as e:
             tb = traceback.format_exc()
             self._logger.debug(tb)
-            self._logger.error(e)
             self._logger.error(f'Terminating ingestion for {self._observation.observation_id}')
+            self._logger.error(e)
             return None
 
     def _get_data_product_type(self, ext):
@@ -193,6 +200,33 @@ class Possum1DMapping(cc.TelescopeMapping):
         if '_pilot' in self._storage_name.file_name:
             result = 'AS103'
         return result
+
+    def _update_plane(self, plane):
+        super()._update_plane(plane)
+        # write the observation to the client which is configured for server-side metadata creation at the plane level
+        # read the computed metadata from that CAOM service and copy the Plane-level bits
+        if self._server_side_observation:
+            repo_update(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
+        else:
+            repo_create(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
+        self._server_side_observation = repo_get(
+            self._clients.server_side_ctor_client,
+            self._storage_name.collection,
+            self._storage_name.obs_id,
+            self._observable.metrics,
+        )
+        for computed_plane in self._server_side_observation.planes.values():
+            if computed_plane.product_id == plane.product_id:
+                # a reference will suffice for the copy as there's no _id field for the Plane-level attributes
+                self._logger.debug(f'Copying computed plane information from {plane.product_id}')
+                plane.custom = computed_plane.custom
+                plane.energy = computed_plane.energy
+                plane.observable = computed_plane.observable
+                plane.polarization = computed_plane.polarization
+                plane.position = computed_plane.position
+                plane.time = computed_plane.time
+
+                # do not clean up the Part, Chunk information, because it's used for cutout support
 
     def _update_artifact(self, artifact):
         delete_these = []
@@ -427,6 +461,10 @@ class Output3DMapping(OutputSpatial):
         bp.configure_custom_axis(4)
         self._logger.debug('Done accumulate_bp.')
 
+    # def _update_artifact(self, artifact):
+    #     for part in artifact.parts.values():
+    #         for chunk in part.chunks:
+    #             if chunk.custom is not
 
 class OutputCustomSpatial(OutputSpatial):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
@@ -466,10 +504,12 @@ class Catalog1DMapping(Possum1DMapping):
 
     def _update_plane(self, plane):
         super()._update_plane(plane)
-        hp = HEALPix(nside=32, frame='icrs')
+        hp = HEALPix(nside=32, order='ring', frame='icrs')
         vertices = []
         points = []
         vertex_start = None
+        # TODO - the healpix index is shifted by 1 in the rename, does it need to be unshifted
+        # by 1 here?
         x = hp.boundaries_skycoord(healpix_index=self._storage_name.healpix_index, step=1)
         for x1 in x:
             for x2 in x1:
@@ -489,29 +529,6 @@ class Catalog1DMapping(Possum1DMapping):
             bounds=bounds, resolution=self._storage_name.spatial_resolution
         )
         plane.position = position
-        # find the existing Observation metadata, with the original observationID
-        # TODO going to have to look for a different observationID, because there's no
-        # Chunk-level metadata in this Observation
-        existing = None
-        for client in [self._clients.metadata_client, self._clients.server_side_ctor_client]:
-            existing = repo_get(
-                client,
-                self._storage_name.collection,
-                self._storage_name.obs_id,
-                self._observable.metrics,
-            )
-            if existing:
-                break
-        if existing:
-            for existing_plane in existing.planes.values():
-                if existing_plane.uri == self._storage_name.file_uri:
-                    # copy metadata from another plane - TODO - this won't work for 1d pipeline files
-                    continue
-                else:
-                    plane.energy = existing_plane.energy
-                    plane.polarization = existing_plane.polarization
-                    plane.custom = existing_plane.custom
-                    break
 
 
 def mapping_factory(storage_name, headers, clients, observable, observation, config):

@@ -93,21 +93,15 @@ from caom2pipe.run_composable import set_logging, StateRunner, TodoRunner
 from caom2pipe.transfer_composable import CadcTransfer, Transfer
 from caom2repo import CAOM2RepoClient
 from caom2utils.data_util import get_file_type
-from possum2caom2 import fits2caom2_augmentation, preview_augmentation
+from possum2caom2 import fits2caom2_augmentation, preview_augmentation, spectral_augmentation
 from possum2caom2.storage_name import PossumName
 
 
 __all__ = ['DATA_VISITORS', 'META_VISITORS', 'remote_execution']
 META_VISITORS = [fits2caom2_augmentation]
-DATA_VISITORS = [preview_augmentation]
+DATA_VISITORS = [preview_augmentation, spectral_augmentation]
 
-"""
-TODO List:
-1. config switch to keep the files, or not
-2. redo a single file?
-3. which files of the 8510 do you actually want? all of them copied to CANFAR? which ones archived?
 
-"""
 class RCloneClients(ClientCollection):
 
     def __init__(self, config):
@@ -581,7 +575,7 @@ class ExecutionUnit:
             # if Stokes is axis 4, then frequency is axis 3. If we have >4 axis, the script will fail.
             freq0 = hdr.get('CRVAL3')
             dfreq = hdr.get('CDELT3')
-            n = hdr.get('naxis3')
+            n = hdr.get('NAXIS3')
             if n and n > 1:
                 cenfreq = round((freq0 + (freq0 + n * dfreq))/(2.0 * 1e6))
             else:
@@ -719,77 +713,6 @@ class ExecutionUnit:
                 renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)
                 os.rename(original_fqn, renamed_fqn)
                 self._logger.info(f'Renamed {original_fqn} to {renamed_fqn}.')
-                # found_observation = False
-                # central_wavelength = self._central_wavelengths.get(found_storage_name.obs_id)
-                # if not central_wavelength:
-                #     self._logger.info(f'Building a temp record for {found_storage_name.file_uri}')
-                #     # create a CAOM2 record
-                #     kwargs = {
-                #         'working_directory': self._working_directory,
-                #         'config': self._config,
-                #         'clients': self._clients,
-                #         'storage_name': found_storage_name,
-                #         'metadata_reader': self._remote_metadata_reader,
-                #         'observable': self._observable,
-                #     }
-                #     observation = repo_get(
-                #         self._clients.server_side_ctor_client,
-                #         found_storage_name.collection,
-                #         found_storage_name.obs_id,
-                #         self._observable.metrics,
-                #     )
-                #     if observation:
-                #         found_observation = True
-                #     for visitor in META_VISITORS:
-                #         observation = visitor.visit(observation, **kwargs)
-                #     if observation:
-                #         # post it to sc2
-                #         if found_observation:
-                #             repo_update(
-                #                 self._clients.server_side_ctor_client,
-                #                 observation,
-                #                 self._observable.metrics,
-                #             )
-                #         else:
-                #             repo_create(
-                #                 self._clients.server_side_ctor_client,
-                #                 observation,
-                #                 self._observable.metrics,
-                #             )
-                #         # read it back
-                #         observation = repo_get(
-                #             self._clients.server_side_ctor_client,
-                #             found_storage_name.collection,
-                #             found_storage_name.obs_id,
-                #             self._observable.metrics,
-                #         )
-                #         # calculate central wavelength
-                #         plane = observation.planes[found_storage_name.product_id]
-                #         min_wavelength = (
-                #             plane.energy.bounds.lower * units.meter
-                #         ).to(units.MHz, equivalencies=units.spectral())
-                #         max_wavelength = (
-                #             plane.energy.bounds.upper * units.meter
-                #         ).to(units.MHz, equivalencies=units.spectral())
-                #         central = min_wavelength + ( min_wavelength - max_wavelength ) / 2
-                #         central_wavelength = f'{round(central.value)}MHz'.strip()
-                #         self._logger.info(
-                #             f'Found central wavelength of {central_wavelength} for {found_storage_name.obs_id}'
-                #         )
-                #         self._central_wavelengths[found_storage_name.obs_id] = central_wavelength
-                #         self._observations[found_storage_name.obs_id] = observation
-                #         # keep the least amount of necessary metadata in memory
-                #         while len(plane.artifacts) > 0:
-                #             plane.artifacts.pop()
-                #     else:
-                #         self._logger.error(f'No Observation for {found_storage_name.file_name}')
-                # found_storage_name.rename(central_wavelength)
-                # found_storage_name.rename('')
-                # fqn = os.path.join(self._working_directory, found_storage_name.file_name)
-                # renamed_fqn = os.path.join(self._working_directory, found_storage_name.stage_names[0])
-                # os.rename(fqn, renamed_fqn)
-                # self._logger.info(f'Renamed {fqn} to {renamed_fqn}.')
-                # self._logger.debug(f'{found_storage_name.file_uri}')
             else:
                 self._logger.warning(f'Could not find headers for {file_name}')
         self._logger.debug('End _rename')

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="ed608f2a-d209-4599-9a7b-9f2164dee158">
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="fd608f2a-d209-4599-9a7b-9f2164dee158">
   <caom2:collection>POSSUM</caom2:collection>
   <caom2:observationID>1368MHz_18asec_2013-5552_11261_pilot1_v2</caom2:observationID>
   <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
@@ -25,7 +25,7 @@
     <caom2:name>ASKAP</caom2:name>
   </caom2:instrument>
   <caom2:planes>
-    <caom2:plane caom2:id="10a3e511-be88-4c19-9e7d-9814b42f1c87">
+    <caom2:plane caom2:id="f0a3e511-be88-4c19-9e7d-9814b42f1c87">
       <caom2:productID>3d_pipeline</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
@@ -47,8 +47,73 @@
         <caom2:reference>https://askap.org/possum/</caom2:reference>
         <caom2:lastExecuted>2023-04-27T18:08:11.462760</caom2:lastExecuted>
       </caom2:provenance>
+      <caom2:position>
+        <caom2:bounds xsi:type="caom2:Polygon">
+          <caom2:points>
+            <caom2:point>
+              <caom2:cval1>282.44068154939083</caom2:cval1>
+              <caom2:cval2>-3.3793816187686048</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>280.4519437587476</caom2:cval1>
+              <caom2:cval2>-3.3793816187686048</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>280.4519437587476</caom2:cval1>
+              <caom2:cval2>-1.6895743883911365</caom2:cval2>
+            </caom2:point>
+            <caom2:point>
+              <caom2:cval1>282.4406815493909</caom2:cval1>
+              <caom2:cval2>-1.6895743883911365</caom2:cval2>
+            </caom2:point>
+          </caom2:points>
+          <caom2:samples>
+            <caom2:vertices>
+              <caom2:vertex>
+                <caom2:cval1>282.44068154939083</caom2:cval1>
+                <caom2:cval2>-3.379381618768612</caom2:cval2>
+                <caom2:type>2</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>280.45194375874763</caom2:cval1>
+                <caom2:cval2>-3.379381618768612</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>280.45194375874763</caom2:cval1>
+                <caom2:cval2>-1.6895743883911314</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>282.44068154939083</caom2:cval1>
+                <caom2:cval2>-1.6895743883911314</caom2:cval2>
+                <caom2:type>1</caom2:type>
+              </caom2:vertex>
+              <caom2:vertex>
+                <caom2:cval1>0.0</caom2:cval1>
+                <caom2:cval2>0.0</caom2:cval2>
+                <caom2:type>0</caom2:type>
+              </caom2:vertex>
+            </caom2:vertices>
+          </caom2:samples>
+        </caom2:bounds>
+        <caom2:dimension>
+          <caom2:naxis1>2048</caom2:naxis1>
+          <caom2:naxis2>2048</caom2:naxis2>
+        </caom2:dimension>
+        <caom2:resolution>18.0</caom2:resolution>
+        <caom2:sampleSize>3.495828147615</caom2:sampleSize>
+      </caom2:position>
+      <caom2:energy/>
+      <caom2:time/>
+      <caom2:polarization>
+        <caom2:states>
+          <caom2:state>Q</caom2:state>
+        </caom2:states>
+        <caom2:dimension>1</caom2:dimension>
+      </caom2:polarization>
       <caom2:artifacts>
-        <caom2:artifact caom2:id="fef478d2-01a1-49b0-a551-53adb199d84c">
+        <caom2:artifact caom2:id="eef478d2-01a1-49b0-a551-53adb199d84c">
           <caom2:uri>cadc:POSSUM/PSM_pilot1_1368MHz_18asec_2013-5552_11261_p3d_v2_FDF_tot_dirty.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
@@ -56,10 +121,10 @@
           <caom2:contentLength>6242</caom2:contentLength>
           <caom2:contentChecksum>md5:929d3a284072142d58d8b71bd39fa588</caom2:contentChecksum>
           <caom2:parts>
-            <caom2:part caom2:id="d2bee67e-d332-4751-a664-d0abed6141c4">
+            <caom2:part caom2:id="f2bee67e-d332-4751-a664-d0abed6141c4">
               <caom2:name>0</caom2:name>
               <caom2:chunks>
-                <caom2:chunk caom2:id="3ff3670f-4421-4968-a560-cb600086073c">
+                <caom2:chunk caom2:id="fff3670f-4421-4968-a560-cb600086073c">
                   <caom2:naxis>4</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
@@ -118,7 +183,7 @@
                   <caom2:custom>
                     <caom2:axis>
                       <caom2:axis>
-                        <caom2:ctype>FDEP</caom2:ctype>
+                        <caom2:ctype>FARADAY</caom2:ctype>
                         <caom2:cunit>rad/m**2</caom2:cunit>
                       </caom2:axis>
                       <caom2:function>

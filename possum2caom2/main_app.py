@@ -160,6 +160,12 @@ class Possum1DMapping(cc.TelescopeMapping):
                 )
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
+
+            # the super call removes empty Parts before sending the Observation for server-side computing here
+            for plane in self._observation.planes.values():
+                if plane.product_id == self._storage_name.product_id:
+                    self._post_plane_update(plane)
+
             self._logger.debug('Done update.')
             return self._observation
         except CadcException as e:

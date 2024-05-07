@@ -202,8 +202,7 @@ class Possum1DMapping(cc.TelescopeMapping):
             result = 'AS103'
         return result
 
-    def _update_plane(self, plane):
-        super()._update_plane(plane)
+    def _post_plane_update(self, plane):
         if TaskType.SCRAPE in self._config.task_types:
             self._logger.warning(f'No plane metadata update for {self._observation.observation_id}')
         else:
@@ -260,6 +259,16 @@ class Possum1DMapping(cc.TelescopeMapping):
         for entry in delete_these:
             artifact.parts.pop(entry)
             self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
+
+    def update(self, file_info):
+        super().update(file_info)
+
+        # remove the empty Parts before the plane machinations with server-side computing
+        for plane in self._observation.planes.values():
+            if plane.product_id == self._storage_name.product_id:
+                self._post_plane_update(plane)
+
+        return self._observation
 
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):
@@ -469,6 +478,7 @@ class Output3DMapping(OutputSpatial):
     #     for part in artifact.parts.values():
     #         for chunk in part.chunks:
     #             if chunk.custom is not
+
 
 class OutputCustomSpatial(OutputSpatial):
     def __init__(self, storage_name, headers, clients, observable, observation, config):

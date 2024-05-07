@@ -266,16 +266,6 @@ class Possum1DMapping(cc.TelescopeMapping):
             artifact.parts.pop(entry)
             self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
 
-    def update(self, file_info):
-        super().update(file_info)
-
-        # remove the empty Parts before the plane machinations with server-side computing
-        for plane in self._observation.planes.values():
-            if plane.product_id == self._storage_name.product_id:
-                self._post_plane_update(plane)
-
-        return self._observation
-
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):
         cd1_1 = from_header.get('CD1_1')

@@ -160,6 +160,12 @@ class Possum1DMapping(cc.TelescopeMapping):
                 )
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
+
+            # the super call removes empty Parts before sending the Observation for server-side computing here
+            for plane in self._observation.planes.values():
+                if plane.product_id == self._storage_name.product_id:
+                    self._post_plane_update(plane)
+
             self._logger.debug('Done update.')
             return self._observation
         except CadcException as e:
@@ -259,16 +265,6 @@ class Possum1DMapping(cc.TelescopeMapping):
         for entry in delete_these:
             artifact.parts.pop(entry)
             self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
-
-    def update(self, file_info):
-        super().update(file_info)
-
-        # remove the empty Parts before the plane machinations with server-side computing
-        for plane in self._observation.planes.values():
-            if plane.product_id == self._storage_name.product_id:
-                self._post_plane_update(plane)
-
-        return self._observation
 
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):

@@ -618,7 +618,7 @@ class ExecutionUnit:
             dfreq = hdr.get('CDELT3')
             n = hdr.get('NAXIS3')
             if n and n > 1:
-                cenfreq = round((freq0 + (freq0 + n * dfreq))/(2.0 * 1e6))
+                cenfreq = round((freq0 + (freq0 + (n - 1) * dfreq))/(2.0 * 1e6))
             else:
                 cenfreq = round(freq0/1e6)
 

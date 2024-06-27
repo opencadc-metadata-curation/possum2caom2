@@ -426,12 +426,12 @@ class OutputSpatial(Possum1DMapping):
         bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
 
         bp.configure_position_axes((1, 2))
-        bp.clear('Chunk.position.axis.function.cd11')
-        bp.clear('Chunk.position.axis.function.cd22')
-        bp.add_attribute('Chunk.position.axis.function.cd11', 'CDELT1')
-        bp.set('Chunk.position.axis.function.cd12', 0.0)
-        bp.set('Chunk.position.axis.function.cd21', 0.0)
-        bp.add_attribute('Chunk.position.axis.function.cd22', 'CDELT2')
+        # bp.clear('Chunk.position.axis.function.cd11')
+        # bp.clear('Chunk.position.axis.function.cd22')
+        # bp.add_attribute('Chunk.position.axis.function.cd11', 'CDELT1')
+        # bp.set('Chunk.position.axis.function.cd12', 0.0)
+        # bp.set('Chunk.position.axis.function.cd21', 0.0)
+        # bp.add_attribute('Chunk.position.axis.function.cd22', 'CDELT2')
         bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
         self._logger.debug('Done accumulate_bp.')
@@ -450,6 +450,47 @@ class OutputSpatial(Possum1DMapping):
                         if chunk.energy is not None:
                             chunk.energy_axis = None
         return self._observation
+
+    def _update_artifact(self, artifact):
+        self._logger.debug(f'Begin _update_artifact for {artifact.uri}')
+        super()._update_artifact(artifact)
+        for part in artifact.parts.values():
+            for chunk in part.chunks:
+                if chunk.energy is not None:
+                    # JW - 17-10-23 - remove restfrq
+                    chunk.energy.restfrq = None
+                self._update_chunk_position(chunk)
+        self._logger.debug('End _update_artifact')
+
+    def _update_chunk_position(self, chunk):
+        self._logger.debug(f'Begin update_position_function for {self._storage_name.obs_id}')
+        if chunk.position is not None:
+            header = self._headers[0]
+            cd1_1 = header.get('CD1_1')
+            if cd1_1 is None:
+                hdr = fits.Header()
+                Possum1DMapping._from_pc_to_cd(header, hdr)
+                for kw in [
+                    'CDELT1',
+                    'CDELT2',
+                    'CRPIX1',
+                    'CRPIX2',
+                    'CRVAL1',
+                    'CRVAL2',
+                    'CTYPE1',
+                    'CTYPE2',
+                    'CUNIT1',
+                    'CUNIT2',
+                    'NAXIS',
+                    'NAXIS1',
+                    'NAXIS2',
+                    'DATE-OBS',
+                    'EQUINOX',
+                ]:
+                    hdr[kw] = header.get(kw)
+                wcs_parser = FitsWcsParser(hdr, self._storage_name.obs_id, 0)
+                wcs_parser.augment_position(chunk)
+        self._logger.debug(f'End update_function_position for {self._storage_name.obs_id}')
 
 
 class Output3DMapping(OutputSpatial):
@@ -559,5 +600,5 @@ def mapping_factory(storage_name, headers, clients, observable, observation, con
         result = TaylorMapping(storage_name, headers, clients, observable, observation, config)
     else:
         result = InputTileMapping(storage_name, headers, clients, observable, observation, config)
-    logging.info(f'Constructed {result.__class__.__name__} for mapping {storage_name.file_name}.')
+    logging.error(f'Constructed {result.__class__.__name__} for mapping {storage_name.file_name}.')
     return result

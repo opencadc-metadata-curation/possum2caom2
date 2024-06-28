@@ -73,6 +73,7 @@ import os
 import shutil
 import traceback
 
+import numpy as np
 from astropy import units
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
@@ -533,10 +534,47 @@ class ExecutionUnit:
                 self._logger.error(f'Removed working directory {self._working_directory} and contents.')
         self._logger.debug('End _clean_up_workspace')
 
+    def _RADEC_hms_dms_to_string(self, c: SkyCoord):
+        """
+        Round SkyCoordinate "c" (RA,DEC) to a string of "{hhmm}{ddmm}" for "{ra}{dec}"
+        with proper rounding
+        """
+        ### round RA ###
+        ra_h, ra_m, ra_s = c.ra.hms
+        # round minutes based on seconds
+        ra_m = round(ra_m + (ra_s / 60.0))
+        # round hours based on minutes
+        if ra_m >= 60:
+            ra_m = 0
+            ra_h += 1
+        # check hours boundary
+        if ra_h >= 24:
+            ra_h = 0
+        # create RA hh mm string with zero padding
+        ra_hh_mm = f"{int(ra_h):02d}{int(ra_m):02d}"
+
+        ### round DEC ###
+        dsign = "+" # rounding absolute dec and fixing sign after
+        if c.dec < (0*units.degree):
+            dsign = "-"
+        dec_d, dec_m, dec_s = np.abs(c.dec.dms)
+        # round minutes based on seconds
+        dec_m = round(abs(dec_m) + abs(dec_s)/60.0) 
+        # round degrees based on minutes
+        if dec_m >= 60:
+            dec_m = 0
+            dec_d += 1
+        # create DEC dd mm string with zero padding and the proper sign
+        dec_dd_mm = f"{dsign}{int(dec_d):02d}{int(dec_m):02d}"
+
+        # Create final string "hhmm-ddmm"
+        RADEC = f"{ra_hh_mm}{dec_dd_mm}"
+        return RADEC
+
     def _find_new_file_name(self, hdr, mfs):
     # def name(fitsimage, prefix, version="v1", mfs=False):
         """
-        Algorithm from @Sebokolodi and @Cameron-Van-Eck (github).
+        Algorithm from @Sebokolodi, @Cameron-Van-Eck, @ErikOsinga (github).
         Setting up the name to be used for tiles. The script reads the bmaj and stokes from the fits header. The
         rest of the parameters are flexible to change.
 
@@ -567,7 +605,7 @@ class ExecutionUnit:
             dfreq = hdr.get('CDELT4')
             n = hdr.get('NAXIS4')
             if n and n > 1:
-                cenfreq = round((freq0 + (freq0 + n * dfreq))/(2.0 * 1e6))
+                cenfreq = round((freq0 + (freq0 + (n - 1) * dfreq))/(2.0 * 1e6))
             else:
                 cenfreq = round(freq0/1e6)
 
@@ -579,7 +617,7 @@ class ExecutionUnit:
             dfreq = hdr.get('CDELT3')
             n = hdr.get('NAXIS3')
             if n and n > 1:
-                cenfreq = round((freq0 + (freq0 + n * dfreq))/(2.0 * 1e6))
+                cenfreq = round((freq0 + (freq0 + (n - 1) * dfreq))/(2.0 * 1e6))
             else:
                 cenfreq = round(freq0/1e6)
 
@@ -624,28 +662,17 @@ class ExecutionUnit:
 
         self._logger.info(f'Derived RA is {RA} degrees and DEC is {DEC} degrees')
         c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')
-
-        h, hm, hs = c.ra.hms
-        hmhs = str(round(hm + (hs / 60.0))).zfill(2)
-        hm = f"{int(h):02d}{hmhs}"
-
-        d, dm, ds = c.dec.dms
-        # if dec is in the southern sky leave as is. If northen add a +.
-        dmds = str(round(abs(dm) + (abs(dm) / 60.0))).zfill(2)
-        dm = f'{abs(int(d)):02d}{dmds}'
-        if (c.dec < 0) and (dm[0] != '-'):
-            dm = '-'+dm
-        if c.dec > 0:
-            dm = '+' + dm
+        # coordinate string as "hhmm-ddmm"
+        hmdm = self._RADEC_hms_dms_to_string(c)
 
         if mfs:
             outname = (
-                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hm}{dm}_{tileID}_t0_{stokesid}_'
+                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_t0_{stokesid}_'
                 f'{self._config.lookup.get('rename_version')}.fits'
             )
         else:
             outname = (
-                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hm}{dm}_{tileID}_{stokesid}_'
+                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_{stokesid}_'
                 f'{self._config.lookup.get('rename_version')}.fits'
             )
         return outname

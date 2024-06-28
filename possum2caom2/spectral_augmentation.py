@@ -95,7 +95,6 @@ def visit(observation, **kwargs):
                 data = np.array(Table(hdul[1].data)['freq'][1])
                 min_bound = data.min()
                 max_bound = data.max()
-                logging.error(f'min {min_bound} max {max_bound}')
                 # convert from file units to 'm'
                 convert_from = hdul[1].columns['freq'].unit
                 if convert_from == 'Hz':

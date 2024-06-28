@@ -68,7 +68,6 @@
 
 import logging
 import numpy as np
-from astropy import units
 from astropy.io import fits
 from astropy.table import Table
 from caom2 import Energy, EnergyBand, Interval, shape

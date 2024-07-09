@@ -103,6 +103,7 @@ class PossumValueRepair(ValueRepairCache):
     VALUE_REPAIR = {
         'chunk.custom.axis.axis.cunit': {'rad / m2': 'rad/m**2'},
         'chunk.custom.axis.axis.ctype': {'FDEP': 'FARADAY'},
+        'chunk.polarization.axis.function.ref_coord.val': {0.0: 1.0},
     }
 
     def __init__(self):

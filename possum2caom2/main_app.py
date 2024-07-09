@@ -443,6 +443,8 @@ class OutputSpatial(SpatialMapping):
         super().accumulate_blueprint(bp)
 
         bp.set('Plane.provenance.name', 'POSSUM')
+        if 'pilot' not in self._storage_name.file_name:
+            bp.set('Plane.provenance.producer', 'POSSUM-Polarimetry-Pipeline')
         bp.clear('Plane.provenance.lastExecuted')
         bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
 

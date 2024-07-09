@@ -43,7 +43,7 @@
       <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
         <caom2:name>POSSUM</caom2:name>
-        <caom2:producer>ASKAPsoft</caom2:producer>
+        <caom2:producer>POSSUM-Polarimetry-Pipeline</caom2:producer>
         <caom2:reference>https://askap.org/possum/</caom2:reference>
         <caom2:lastExecuted>2024-03-21T09:26:12.080838</caom2:lastExecuted>
       </caom2:provenance>

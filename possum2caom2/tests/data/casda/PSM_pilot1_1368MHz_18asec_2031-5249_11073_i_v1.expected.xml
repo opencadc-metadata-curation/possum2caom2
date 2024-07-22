@@ -45,7 +45,7 @@
         <caom2:name>ASKAPsoft</caom2:name>
         <caom2:project>POSSUM</caom2:project>
         <caom2:producer>AusSRC</caom2:producer>
-        <caom2:reference>https://possum-survey.org/</caom2:reference>
+        <caom2:reference>https://askap.org/possum/</caom2:reference>
         <caom2:lastExecuted>2023-04-28T07:47:09.193657</caom2:lastExecuted>
       </caom2:provenance>
       <caom2:position>

@@ -44,7 +44,7 @@
       <caom2:provenance>
         <caom2:name>POSSUM</caom2:name>
         <caom2:producer>CASA 6.5.1-23 CASAtools:v1.0.0</caom2:producer>
-        <caom2:reference>https://askap.org/possum/</caom2:reference>
+        <caom2:reference>https://possum-survey.org</caom2:reference>
         <caom2:lastExecuted>2022-10-26T20:04:48.337320</caom2:lastExecuted>
       </caom2:provenance>
       <caom2:position>
@@ -149,10 +149,10 @@
                             <caom2:val>0.0</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>-0.0009710633743374</caom2:cd11>
-                        <caom2:cd12>0.0</caom2:cd12>
-                        <caom2:cd21>0.0</caom2:cd21>
-                        <caom2:cd22>0.0009710633743374</caom2:cd22>
+                        <caom2:cd11>-0.00068664549695582</caom2:cd11>
+                        <caom2:cd12>-0.00068664549695582</caom2:cd12>
+                        <caom2:cd21>-0.00068664549695582</caom2:cd21>
+                        <caom2:cd22>0.00068664549695582</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>

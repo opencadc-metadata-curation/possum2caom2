@@ -83,13 +83,15 @@ import helpers
 
 def pytest_generate_tests(metafunc):
     test_data_dir = f'{metafunc.config.invocation_dir}/data'
-    obs_id_list = glob.glob(f'{test_data_dir}/**/*.fits.header')
+    obs_id_list = glob.glob(f'{test_data_dir}/casda/*.fits.header')
+    obs_id_list_out = glob.glob(f'{test_data_dir}/possum/*.fits.header')
+    obs_id_list += obs_id_list_out
     metafunc.parametrize('test_name', obs_id_list)
 
 
 @patch('possum2caom2.possum_execute.RCloneClients')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
-def test_main_app(header_mock, clients_mock, test_data_dir, test_config, test_name):
+def test_main_app(header_mock, clients_mock, test_config, test_name):
     header_mock.side_effect = ac.make_headers_from_file
     clients_mock.metadata_client.read.return_value = None
 
@@ -136,5 +138,5 @@ def test_main_app(header_mock, clients_mock, test_data_dir, test_config, test_na
                 raise AssertionError(msg)
         else:
             mc.write_obs_to_file(observation, actual_fqn)
-            assert False, f'nothing to compare to for {test_name}'
+            assert False, f'{expected_fqn} does not exist. Nothing to compare to for {test_name}'
     # assert False  # cause I want to see logging messages

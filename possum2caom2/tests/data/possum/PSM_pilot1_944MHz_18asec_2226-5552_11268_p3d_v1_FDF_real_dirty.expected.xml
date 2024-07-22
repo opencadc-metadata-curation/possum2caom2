@@ -26,7 +26,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="67a1222a-9c91-4c9b-8bc0-f525cf795416" caom2:metaProducer="possum2caom2/0.1.0">
-      <caom2:productID>3d_pipeline</caom2:productID>
+      <caom2:productID>FDF_real_dirty_3d_pipeline</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
@@ -44,7 +44,7 @@
       <caom2:provenance>
         <caom2:name>POSSUM</caom2:name>
         <caom2:producer>CASA 6.5.1-23 CASAtools:v1.0.0</caom2:producer>
-        <caom2:reference>https://askap.org/possum/</caom2:reference>
+        <caom2:reference>https://possum-survey.org</caom2:reference>
         <caom2:lastExecuted>2022-10-26T20:04:48.337320</caom2:lastExecuted>
       </caom2:provenance>
       <caom2:position>
@@ -155,10 +155,10 @@
                             <caom2:val>0.0</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>-0.0009710633743374</caom2:cd11>
-                        <caom2:cd12>0.0</caom2:cd12>
-                        <caom2:cd21>0.0</caom2:cd21>
-                        <caom2:cd22>0.0009710633743374</caom2:cd22>
+                        <caom2:cd11>-0.00068664549695582</caom2:cd11>
+                        <caom2:cd12>-0.00068664549695582</caom2:cd12>
+                        <caom2:cd21>-0.00068664549695582</caom2:cd21>
+                        <caom2:cd22>0.00068664549695582</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>

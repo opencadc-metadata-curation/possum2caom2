@@ -581,15 +581,14 @@ def test_remote_execute_with_local_commands(
     assert clients_mock.return_value.data_client.put.call_count == 5, f'client mock {clients_mock.return_value.data_client.put.call_count}'
     assert clients_mock.return_value.metadata_client.read.call_count == 5, f'metadata client call count'
     assert clients_mock.return_value.metadata_client.update.call_count == 5, f'metadata client call count'
-    time_box_3 = '2024-04-20T16_33_00_2024-04-22T16_33_00'
-    time_box_4 = '2024-04-28T16_33_00_2024-04-29T20_42_46'
+    time_box_5 = '2024-07-17T16_33_00_2024-07-18T21_40_00_754216'
     assert (
         clients_mock.return_value.data_client.put.mock_calls == [
-            call(f'{tmp_path}/{time_box_3}', 'cadc:POSSUM/POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits'),
-            call(f'{tmp_path}/{time_box_4}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.i.fits'),
-            call(f'{tmp_path}/{time_box_4}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.u.fits'),
-            call(f'{tmp_path}/{time_box_4}', 'cadc:POSSUM/POSSUM.band2.1506-32A_1506-32B.9488.i.fits'),
-            call(f'{tmp_path}/{time_box_4}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.q.fits'),
+            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band2.1506-32A_1506-32B.9488.i.fits'),
+            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.i.fits'),
+            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.q.fits'),
+            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.u.fits'),
+            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits'),
         ]
     ), clients_mock.return_value.data_client.put.mock_calls
     assert (

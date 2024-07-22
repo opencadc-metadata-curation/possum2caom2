@@ -44,7 +44,7 @@
       <caom2:provenance>
         <caom2:name>CASA CASAtools</caom2:name>
         <caom2:version>6.5.2-26 v1.0.0</caom2:version>
-        <caom2:reference>https://possum-survey.org/</caom2:reference>
+        <caom2:reference>https://askap.org/possum/</caom2:reference>
         <caom2:project>POSSUM</caom2:project>
         <caom2:producer>AusSRC</caom2:producer>
         <caom2:lastExecuted>2023-05-12T04:44:25.170836</caom2:lastExecuted>

@@ -43,7 +43,7 @@
       <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
         <caom2:name>POSSUM</caom2:name>
-        <caom2:reference>https://askap.org/possum/</caom2:reference>
+        <caom2:reference>https://possum-survey.org</caom2:reference>
       </caom2:provenance>
       <caom2:position/>
       <caom2:energy/>

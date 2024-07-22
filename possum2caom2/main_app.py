@@ -78,6 +78,7 @@ our metadata database to determine which files are relevant.
 """
 
 import logging
+import math
 import traceback
 
 from datetime import datetime, timedelta
@@ -219,18 +220,19 @@ class Possum1DMapping(cc.TelescopeMapping):
                 self._storage_name.obs_id,
                 self._observable.metrics,
             )
-            for computed_plane in server_side_observation.planes.values():
-                if computed_plane.product_id == plane.product_id:
-                    # a reference will suffice for the copy as there's no _id field for the Plane-level attributes
-                    self._logger.debug(f'Copying computed plane information from {plane.product_id}')
-                    plane.custom = computed_plane.custom
-                    plane.energy = computed_plane.energy
-                    plane.observable = computed_plane.observable
-                    plane.polarization = computed_plane.polarization
-                    plane.position = computed_plane.position
-                    plane.time = computed_plane.time
+            if server_side_observation:
+                for computed_plane in server_side_observation.planes.values():
+                    if computed_plane.product_id == plane.product_id:
+                        # a reference will suffice for the copy as there's no _id field for the Plane-level attributes
+                        self._logger.debug(f'Copying computed plane information from {plane.product_id}')
+                        plane.custom = computed_plane.custom
+                        plane.energy = computed_plane.energy
+                        plane.observable = computed_plane.observable
+                        plane.polarization = computed_plane.polarization
+                        plane.position = computed_plane.position
+                        plane.time = computed_plane.time
 
-                    # do not clean up the Part, Chunk information, because it's used for cutout support
+        # do not clean up the Part, Chunk information, because it's used for cutout support
 
     def _update_artifact(self, artifact):
         delete_these = []
@@ -363,7 +365,7 @@ class InputTileMapping(SpatialMapping):
         bp.add_attribute('Plane.provenance.name', 'ORIGIN')
         # JW - 17-10-23 - Use AusSRC for producer
         bp.set('Plane.provenance.producer', 'AusSRC')
-        bp.set_default('Plane.provenance.reference', 'https://possum-survey.org/')
+        bp.set_default('Plane.provenance.reference', 'https://askap.org/possum/')
         bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
         bp.set_default('Plane.provenance.project', 'POSSUM')
         bp.configure_position_axes((1, 2))
@@ -446,6 +448,7 @@ class OutputSpatial(SpatialMapping):
         if 'pilot' not in self._storage_name.file_name:
             bp.set('Plane.provenance.producer', 'POSSUM-Polarimetry-Pipeline')
         bp.clear('Plane.provenance.lastExecuted')
+        bp.set('Plane.provenance.reference', 'https://possum-survey.org')
         bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
 
         bp.configure_position_axes((1, 2))
@@ -466,6 +469,29 @@ class Output3DMapping(OutputSpatial):
         bp.configure_custom_axis(4)
         self._logger.debug('Done accumulate_bp.')
 
+    def _update_artifact(self, artifact):
+        super()._update_artifact(artifact)
+        for part in artifact.parts.values():
+            for chunk in part.chunks:
+                self._update_chunk_position(chunk)
+                if (
+                    'FDF_tot_dirty' in self._storage_name.file_name
+                    and chunk.naxis == 4
+                    and chunk.position is not None
+                    and chunk.custom is not None
+                    and chunk.polarization is not None
+                    and chunk.polarization.axis is not None
+                    and chunk.polarization.axis.function is not None
+                    and chunk.polarization.axis.function.ref_coord is not None
+                    and math.isclose(chunk.polarization.axis.function.ref_coord.val, 0.0)
+                ):
+                    # do this because the model currently cannot handle the polarization definition in this file type
+                    chunk.naxis -= 2
+                    chunk.polarization = None
+                    chunk.custom_axis = None
+                    chunk.polarization_axis = None
+                    self._logger.warning(f'Removing polarization axis for {self._storage_name.file_uri}')
+
 
 class OutputCustomSpatial(OutputSpatial):
     def __init__(self, storage_name, headers, clients, observable, observation, config):
@@ -477,6 +503,17 @@ class OutputCustomSpatial(OutputSpatial):
         super().accumulate_blueprint(bp)
         bp.configure_custom_axis(3)
         self._logger.debug('Done accumulate_bp.')
+
+    def _update_artifact(self, artifact):
+        super()._update_artifact(artifact)
+        for part in artifact.parts.values():
+            for chunk in part.chunks:
+                if chunk.naxis == 3 and chunk.position is not None and chunk.custom is not None:
+                    if chunk.custom.axis.axis.ctype == 'DEGENERATE':
+                        chunk.naxis -= 1
+                        chunk.custom = None
+                        self._logger.error(f'Removing DEGENERATE custom axis for {self._storage_name.file_uri}')
+                self._update_chunk_position(chunk)
 
 
 class OutputFWHM(OutputCustomSpatial):
@@ -581,7 +618,7 @@ class Catalog1DMapping(Possum1DMapping):
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
     if storage_name.is_bintable:
         result = Catalog1DMapping(storage_name, headers, clients, observable, observation, config)
-    elif storage_name.product_id == '3d_pipeline':
+    elif '3d_pipeline' in storage_name.product_id:
         naxis = None
         if headers and len(headers) > 0:
             naxis = headers[0].get('NAXIS')

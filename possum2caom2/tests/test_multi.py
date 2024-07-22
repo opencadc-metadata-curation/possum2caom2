@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2019.                            (c) 2019.
+#  (c) 2024.                            (c) 2024.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -81,56 +81,53 @@ import os
 import helpers
 
 
-def pytest_generate_tests(metafunc):
-    test_data_dir = f'{metafunc.config.invocation_dir}/data'
-    obs_id_list = glob.glob(f'{test_data_dir}/casda/*.fits.header')
-    obs_id_list_out = glob.glob(f'{test_data_dir}/possum/*.fits.header')
-    obs_id_list += obs_id_list_out
-    metafunc.parametrize('test_name', obs_id_list)
-
-
 @patch('possum2caom2.possum_execute.RCloneClients')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
-def test_main_app(header_mock, clients_mock, test_config, test_name):
-    header_mock.side_effect = ac.make_headers_from_file
-    clients_mock.metadata_client.read.return_value = None
-
-    def _sandbox_mock(_, obs_id):
-        return mc.read_obs_from_file(test_name.replace('.fits.header', '.sc2.xml'))
-
-    clients_mock.server_side_ctor_client.read.side_effect = _sandbox_mock
-    storage_name = PossumName(entry=test_name)
-    metadata_reader = rdc.FileMetadataReader()
-    metadata_reader.set(storage_name)
-    file_type = 'application/fits'
-    metadata_reader.file_info[storage_name.file_uri].file_type = file_type
-    test_observable = Mock()
-    meta_producer_mock = PropertyMock(return_value='test_possum/0.0.0')
-    type(test_observable).meta_producer = meta_producer_mock
-    kwargs = {
-        'storage_name': storage_name,
-        'metadata_reader': metadata_reader,
-        'config': test_config,
-        'clients': clients_mock,
-        'observable': test_observable,
-    }
-    expected_fqn = f'{test_name.replace(".fits.header", "")}.expected.xml'
-    in_fqn = expected_fqn.replace('.expected', '.in')
-    actual_fqn = expected_fqn.replace('expected', 'actual')
+def test_main_app(header_mock, clients_mock, test_config, test_data_dir):
+    # logging.getLogger().setLevel(logging.DEBUG)
+    test_dir = f'{test_data_dir}/multi'
+    test_expected_fqn = f'{test_dir}/PSM_944MHz_20asec_1034-5552_v1.expected.xml'
+    actual_fqn = test_expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
         os.unlink(actual_fqn)
+
+    header_mock.side_effect = ac.make_headers_from_file
+    clients_mock.metadata_client.read.return_value = None
+    f_list = glob.glob(f'{test_dir}/*.header')
     observation = None
-    if os.path.exists(in_fqn):
-        observation = mc.read_obs_from_file(in_fqn)
-    observation = fits2caom2_augmentation.visit(observation, **kwargs)
+    for f_name in f_list:
+        def _sandbox_mock(_, obs_id):
+            sc2_name = f_name.replace('.fits.header', '.sc2.xml')
+            if os.path.exists(sc2_name):
+                return mc.read_obs_from_file(sc2_name)
+            else:
+                return None
+        clients_mock.server_side_ctor_client.read.side_effect = _sandbox_mock
+
+        storage_name = PossumName(entry=f_name)
+        metadata_reader = rdc.FileMetadataReader()
+        metadata_reader.set(storage_name)
+        file_type = 'application/fits'
+        metadata_reader.file_info[storage_name.file_uri].file_type = file_type
+        test_observable = Mock()
+        meta_producer_mock = PropertyMock(return_value='test_possum/0.0.0')
+        type(test_observable).meta_producer = meta_producer_mock
+        kwargs = {
+            'storage_name': storage_name,
+            'metadata_reader': metadata_reader,
+            'config': test_config,
+            'clients': clients_mock,
+            'observable': test_observable,
+        }
+        observation = fits2caom2_augmentation.visit(observation, **kwargs)
 
     if observation is None:
-        assert False, f'Did not create observation for {test_name}'
+        assert False, f'Did not create observation for {test_expected_fqn}'
     else:
-        if os.path.exists(expected_fqn):
-            expected = mc.read_obs_from_file(expected_fqn)
+        if os.path.exists(test_expected_fqn):
+            expected = mc.read_obs_from_file(test_expected_fqn)
             helpers.set_release_date_values(observation)
-            compare_result = get_differences(expected, observation)
+            compare_result = get_differences(observation, expected)
             if compare_result is not None:
                 mc.write_obs_to_file(observation, actual_fqn)
                 compare_text = '\n'.join([r for r in compare_result])
@@ -138,5 +135,5 @@ def test_main_app(header_mock, clients_mock, test_config, test_name):
                 raise AssertionError(msg)
         else:
             mc.write_obs_to_file(observation, actual_fqn)
-            assert False, f'{expected_fqn} does not exist. Nothing to compare to for {test_name}'
+            assert False, f'{test_expected_fqn} does not exist. Nothing to compare to for {test_expected_fqn}'
     # assert False  # cause I want to see logging messages

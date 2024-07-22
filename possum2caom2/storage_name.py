@@ -169,7 +169,6 @@ class PossumName(StorageName):
         if 'asec' in self._file_id:
             self._logger.info(f'{self._file_id} has already been renamed.')
             return self._file_name
-        self._logger.error(self._file_name)
         # Jennifer West, 08-04-24
         # band1 == 944MHz, band2 == 1296MHz
         # is version == v1
@@ -256,7 +255,16 @@ class PossumName(StorageName):
         else:
             bits = self._file_id.split('_')
             if '_p3d_' in self._file_id:
-                self._product_id = '3d_pipeline'
+                if 'FDF_im_dirty' in self._file_id:
+                    self._product_id = 'FDF_im_dirty_3d_pipeline'
+                elif 'FDF_real_dirty' in self._file_id:
+                    self._product_id = 'FDF_real_dirty_3d_pipeline'
+                elif 'FDF_tot_dirty' in self._file_id:
+                    self._product_id = 'FDF_tot_dirty_3d_pipeline'
+                elif 'FDF_tot_dirty' in self._file_id:
+                    self._product_id = 'RMSF_FWHM_3d_pipeline'
+                else:
+                    self._product_id = '3d_pipeline'
             elif '_p1d_' in self._file_id:
                 # catalog in csv, spectra, FDF in BINTABLE
                 self._product_id = '1d_pipeline'

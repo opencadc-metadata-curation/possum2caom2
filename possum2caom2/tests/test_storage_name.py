@@ -100,7 +100,14 @@ def test_storage_name(test_config, test_name):
         assert test_subject.obs_id in test_obs_ids, f'wrong obs id {test_f_name} {test_subject}'
         assert test_subject.source_names == [entry], f'wrong source names {test_f_name}'
         if 'p3d' in entry:
-            assert test_subject.product_id == '3d_pipeline', f'wrong product id {test_subject.product_id}'
+            if 'FDF_tot_dirty' in entry:
+                assert test_subject.product_id == 'FDF_tot_dirty_3d_pipeline', f'wrong product id {test_subject.product_id}'
+            elif 'FDF_im_dirty' in entry:
+                assert test_subject.product_id == 'FDF_im_dirty_3d_pipeline', f'wrong product id {test_subject.product_id}'
+            elif 'FDF_real_dirty' in entry:
+                assert test_subject.product_id == 'FDF_real_dirty_3d_pipeline', f'wrong product id {test_subject.product_id}'
+            else:
+                assert test_subject.product_id == '3d_pipeline', f'wrong product id {test_subject.product_id}'
         elif 'p1d' in entry:
             assert test_subject.product_id == '1d_pipeline', f'wrong product id {test_subject.product_id}'
         else:

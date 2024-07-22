@@ -116,15 +116,26 @@ class PossumValueRepair(ValueRepairCache):
 class Possum1DMapping(cc.TelescopeMapping):
     value_repair = PossumValueRepair()
 
-    def __init__(self, storage_name, headers, clients, observable, observation):
-        super().__init__(storage_name, headers, clients, observable, observation)
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
+        # Cameron Van Eck - 23-10-23
+        # Set release date to be 12 months after ingest. That’s the current POSSUM policy: data goes public 12
+        # months after being generated. It doesn't have to be particularly precise: date of ingest + increment year by 1
+        self._1_year_after = datetime.now() + timedelta(days=365)
+        self._config = config
 
     def accumulate_blueprint(self, bp):
-        """Configure the telescope-specific ObsBlueprint at the CAOM model
-        Observation level."""
+        """Configure the telescope-specific ObsBlueprint at the CAOM model Observation level."""
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
-        bp.set('Observation.metaRelease', '2025-01-01T00:00:00.000')
+        # JW - 17-10-23 - Use ASKAP
+        bp.set('Observation.instrument.name', 'ASKAP')
+        bp.set('Observation.metaRelease', self._1_year_after)
+        bp.set('Observation.proposal.id', '_get_proposal_id()')
+        bp.set_default('Observation.telescope.name', 'ASKAP')
+        bp.set_default('Observation.telescope.geoLocationX', -2558266.717765)
+        bp.set_default('Observation.telescope.geoLocationY', 5095672.176508)
+        bp.set_default('Observation.telescope.geoLocationZ', -2849020.838078)
         bp.set('Plane.calibrationLevel', CalibrationLevel.CALIBRATED)
         bp.set('Plane.dataProductType', '_get_data_product_type()')
         bp.set('Plane.metaRelease', self._1_year_after)
@@ -142,6 +153,12 @@ class Possum1DMapping(cc.TelescopeMapping):
         try:
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
+
+            # the super call removes empty Parts before sending the Observation for server-side computing here
+            for plane in self._observation.planes.values():
+                if plane.product_id == self._storage_name.product_id:
+                    self._post_plane_update(plane)
+
             self._logger.debug('Done update.')
             return self._observation
         except CadcException as e:
@@ -149,9 +166,6 @@ class Possum1DMapping(cc.TelescopeMapping):
             self._logger.debug(tb)
             self._logger.error(f'Terminating ingestion for {self._observation.observation_id}')
             self._logger.error(e)
-            self._logger.error(
-                f'Terminating ingestion for {self._observation.observation_id}'
-            )
             return None
 
     def _get_data_product_type(self, ext):
@@ -379,10 +393,8 @@ class TaylorMapping(InputTileMapping):
         Observation level."""
         self._logger.debug('Begin accumulate_bp.')
         super().accumulate_blueprint(bp)
-
-        bp.configure_position_axes((1, 2))
-        bp.configure_polarization_axis(3)
-        bp.configure_custom_axis(4)
+        bp.set('Plane.provenance.name', '_get_plane_provenance_name()')
+        bp.set('Plane.provenance.version', '_get_plane_provenance_version()')
 
         bp.configure_time_axis(5)
         bp.set('Chunk.time.axis.axis.ctype', 'TIME')

@@ -83,6 +83,7 @@ from copy import deepcopy
 from datetime import datetime
 
 from cadcdata.storageinv import FileInfo
+from caom2pipe.astro_composable import check_fitsverify
 from caom2pipe.client_composable import ClientCollection, repo_create, repo_get, repo_update
 from caom2pipe.data_source_composable import IncrementalDataSource, ListDirSeparateDataSource
 from caom2pipe.execute_composable import OrganizeExecutes
@@ -299,6 +300,13 @@ class RemoteListDirDataSource(ListDirSeparateDataSource):
     def _capture_todo(self):
         # do not update total record count, that's already been done in the RemoteIncrementalDataSource
         pass
+
+    def default_filter(self, entry):
+        work_with_file = False
+        if super().default_filter(entry):
+            if check_fitsverify(entry.path):
+                work_with_file = True
+        return work_with_file
 
     def get_work(self):
         result = super().get_work()
@@ -559,7 +567,7 @@ class ExecutionUnit:
             dsign = "-"
         dec_d, dec_m, dec_s = np.abs(c.dec.dms)
         # round minutes based on seconds
-        dec_m = round(abs(dec_m) + abs(dec_s)/60.0) 
+        dec_m = round(abs(dec_m) + abs(dec_s)/60.0)
         # round degrees based on minutes
         if dec_m >= 60:
             dec_m = 0

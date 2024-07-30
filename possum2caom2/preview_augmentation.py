@@ -33,6 +33,8 @@ class PossumPreview(PreviewVisitor):
         If the file is a cube, it is collapsed along the third axis.
         """
         self._logger.debug(f'Begin generate_plots for {obs_id}')
+        if 'pipeline' in self.storage_name.product_id:
+            return 0
         count = 0
         # Get data and header:
         data = pf.getdata(self._science_fqn)

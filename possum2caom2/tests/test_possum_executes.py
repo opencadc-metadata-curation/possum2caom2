@@ -277,6 +277,7 @@ def test_state_runner_reporter(test_config, tmp_path, change_test_dir):
     assert test_reporter.all == 0, 'reporter all'
 
 
+@patch('possum2caom2.possum_execute.RemoteListDirDataSource.default_filter')
 @patch('possum2caom2.preview_augmentation.visit')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 @patch('possum2caom2.possum_execute.exec_cmd')
@@ -286,13 +287,12 @@ def test_state_runner_nominal_multiple_files(
     exec_cmd_mock,
     header_mock,
     preview_mock,
+    filter_mock,
     test_config,
     test_data_dir,
     tmp_path,
     change_test_dir,
 ):
-    import logging
-    # logging.getLogger().setLevel(logging.INFO)
     # test that three file get processed properly, and get left behind
     with open(f'{test_data_dir}/storage_mock/rclone_lsjson.json') as f:
         exec_cmd_info_mock.return_value = f.read()
@@ -327,6 +327,7 @@ def test_state_runner_nominal_multiple_files(
     preview_mock.side_effect = (
         lambda x, working_directory, storage_name, log_file_directory, clients, observable, metadata_reader, config: x
     )
+    filter_mock.return_value = True
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = False
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
@@ -401,12 +402,21 @@ def test_state_runner_nominal_multiple_files(
     assert len(left_behind) + len(left_behind_2) == 3, 'no files cleaned up'
 
 
+@patch('possum2caom2.possum_execute.RemoteListDirDataSource.default_filter')
 @patch('possum2caom2.preview_augmentation.visit')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 @patch('possum2caom2.possum_execute.exec_cmd')
 @patch('possum2caom2.possum_execute.exec_cmd_info')
 def test_state_runner_clean_up_when_storing_with_retry(
-    exec_cmd_info_mock, exec_cmd_mock, header_mock, visit_mock, test_config, test_data_dir, tmp_path, change_test_dir
+    exec_cmd_info_mock,
+    exec_cmd_mock,
+    header_mock,
+    visit_mock,
+    filter_mock,
+    test_config,
+    test_data_dir,
+    tmp_path,
+    change_test_dir,
 ):
     # one file gets cleaned up
     with open(f'{test_data_dir}/storage_mock/rclone_lsjson.json') as f:
@@ -428,6 +438,7 @@ def test_state_runner_clean_up_when_storing_with_retry(
     visit_mock.side_effect = (
         lambda x, working_directory, storage_name, log_file_directory, clients, observable, metadata_reader, config: x
     )
+    filter_mock.return_value = True
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = True
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
@@ -548,10 +559,11 @@ def test_remote_execution(
     ), f'client mock {clients_mock.server_side_ctor_client.mock_calls}'
 
 
+@patch('possum2caom2.possum_execute.RemoteListDirDataSource.default_filter')
 @patch('possum2caom2.fits2caom2_augmentation.visit')
 @patch('possum2caom2.possum_execute.RCloneClients')
 def test_remote_execute_with_local_commands(
-    clients_mock, visit_mock, test_config, test_data_dir, tmp_path, change_test_dir
+    clients_mock, visit_mock, filter_mock, test_config, test_data_dir, tmp_path, change_test_dir
 ):
     # execution path for local rclone
     test_config.change_working_directory(tmp_path)
@@ -575,6 +587,7 @@ def test_remote_execute_with_local_commands(
     test_observation = read_obs_from_file(f'{test_data_dir}/storage_mock/renaming_observation.xml')
     clients_mock.return_value.server_side_ctor_client.read.return_value = None
     visit_mock.return_value = test_observation
+    filter_mock.return_value = True
 
     test_result = possum_execute.remote_execution()
     assert test_result == 0, 'expect success result'

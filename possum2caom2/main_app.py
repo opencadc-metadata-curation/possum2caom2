@@ -94,7 +94,7 @@ from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
 from caom2pipe import caom_composable as cc
 from caom2pipe.client_composable import repo_create, repo_delete, repo_get
-from caom2pipe.manage_composable import CadcException, TaskType, ValueRepairCache
+from caom2pipe.manage_composable import CadcException, get_keyword, TaskType, ValueRepairCache
 
 
 __all__ = ['mapping_factory']
@@ -234,33 +234,34 @@ class Possum1DMapping(cc.TelescopeMapping):
         # do not clean up the Part, Chunk information, because it's used for cutout support
 
     def _update_artifact(self, artifact):
-        delete_these = []
-        for part in artifact.parts.values():
-            if len(part.chunks) == 0:
-                delete_these.append(part.name)
-            else:
-                for chunk in part.chunks:
-                    if (
-                        chunk.custom is None
-                        and chunk.energy is None
-                        and chunk.observable is None
-                        and chunk.polarization is None
-                        and chunk.position is None
-                        and chunk.time is None
-                    ) or (  # handle the Taylor BINTABLE extension case
-                        chunk.custom is None
-                        and chunk.energy is None
-                        and chunk.observable is None
-                        and chunk.polarization is None
-                        and chunk.position is None
-                        and chunk.time is not None
-                    ):
-                        delete_these.append(part.name)
-                        break
+        if 'pilot' in self._storage_name.file_name:
+            delete_these = []
+            for part in artifact.parts.values():
+                if len(part.chunks) == 0:
+                    delete_these.append(part.name)
+                else:
+                    for chunk in part.chunks:
+                        if (
+                            chunk.custom is None
+                            and chunk.energy is None
+                            and chunk.observable is None
+                            and chunk.polarization is None
+                            and chunk.position is None
+                            and chunk.time is None
+                        ) or (  # handle the Taylor BINTABLE extension case
+                            chunk.custom is None
+                            and chunk.energy is None
+                            and chunk.observable is None
+                            and chunk.polarization is None
+                            and chunk.position is None
+                            and chunk.time is not None
+                        ):
+                            delete_these.append(part.name)
+                            break
 
-        for entry in delete_these:
-            artifact.parts.pop(entry)
-            self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
+            for entry in delete_these:
+                artifact.parts.pop(entry)
+                self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
 
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):
@@ -323,7 +324,13 @@ class SpatialMapping(Possum1DMapping):
         self._logger.debug(f'Begin update_position_function for {self._storage_name.obs_id}')
         if chunk.position is not None:
             header = self._headers[0]
-            cd1_1 = header.get('CD1_1')
+            cd1_1 = self._headers[0].get('CD1_1')
+            pc1_1 = self._headers[0].get('PC1_1')
+            if cd1_1 is None and pc1_1 is None:
+                cd1_1 = self._headers[1].get('CD1_1')
+                pc1_1 = self._headers[1].get('PC1_1')
+                if cd1_1 is None and pc1_1 is not None:
+                    header = self._headers[1]
             if cd1_1 is None:
                 hdr = fits.Header()
                 Possum1DMapping._from_pc_to_cd(header, hdr)
@@ -446,14 +453,16 @@ class OutputSpatial(SpatialMapping):
         bp.set('Plane.provenance.name', 'POSSUM')
         if 'pilot' not in self._storage_name.file_name:
             bp.set('Plane.provenance.producer', 'POSSUM-Polarimetry-Pipeline')
-        bp.clear('Plane.provenance.lastExecuted')
         bp.set('Plane.provenance.reference', 'https://possum-survey.org')
-        bp.add_attribute('Plane.provenance.lastExecuted', 'DATE')
+        bp.set('Plane.provenance.lastExecuted', '_get_plane_provenance_last_executed()')
 
         bp.configure_position_axes((1, 2))
         bp.set('Chunk.position.resolution', '_get_position_resolution()')
 
         self._logger.debug('Done accumulate_bp.')
+
+    def _get_plane_provenance_last_executed(self, ext):
+        return get_keyword(self._headers, 'DATE')
 
 
 class Output3DMapping(OutputSpatial):
@@ -621,6 +630,8 @@ def mapping_factory(storage_name, headers, clients, observable, observation, con
         naxis = None
         if headers and len(headers) > 0:
             naxis = headers[0].get('NAXIS')
+            if len(headers) > 1:
+                naxis = headers[1].get('NAXIS')
         if '_FWHM' in storage_name.file_name:
             if naxis:
                 if naxis == 3:

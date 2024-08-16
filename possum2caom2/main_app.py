@@ -626,7 +626,7 @@ class Catalog1DMapping(Possum1DMapping):
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
     if storage_name.is_bintable:
         result = Catalog1DMapping(storage_name, headers, clients, observable, observation, config)
-    elif '3d_pipeline' in storage_name.product_id:
+    elif '_p3d_' in storage_name._file_name:
         naxis = None
         if headers and len(headers) > 0:
             naxis = headers[0].get('NAXIS')

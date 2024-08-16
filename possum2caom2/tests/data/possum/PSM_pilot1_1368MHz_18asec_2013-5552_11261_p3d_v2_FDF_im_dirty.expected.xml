@@ -26,7 +26,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="f4ced778-a82d-4c08-8916-9900125232b3">
-      <caom2:productID>FDF_im_dirty_3d_pipeline</caom2:productID>
+      <caom2:productID>FDF_im_dirty_p3d_v2</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>

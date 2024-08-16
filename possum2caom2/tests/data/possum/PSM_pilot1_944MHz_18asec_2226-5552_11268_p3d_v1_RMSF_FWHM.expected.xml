@@ -26,7 +26,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="b01db439-67ed-4012-88b7-a664ce2fa17a">
-      <caom2:productID>3d_pipeline</caom2:productID>
+      <caom2:productID>RMSF_p3d_v1</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>

@@ -144,7 +144,8 @@ class PossumName(StorageName):
         return '_FDFs.fits' in self._file_name or '_spectra.fits' in self._file_name
 
     @property
-    def is_original(self):
+    def is_origin_pattern(self):
+        # how the file names come from Pawsey
         return 'asec' not in self._file_id
 
     @property
@@ -224,16 +225,16 @@ class PossumName(StorageName):
 
     def set_obs_id(self):
         # leave off the "PSM" because collection is POSSUM
-        if self.is_original:
+        if self.is_origin_pattern:
             # how the file names come from Pawsey
             self._obs_id = self._file_id
         else:
             bits = self._file_id.split('_')
-            index = lambda x: bits[x + 1] if 'pilot' in self._file_id else bits[x]
-            self._central_frequency = index(1)
-            self._resolution = index(2)
-            self._position = index(3)
-            self._healpix_index = index(4)
+            ii = lambda x: bits[x + 1] if 'pilot' in self._file_id else bits[x]
+            self._central_frequency = ii(1)
+            self._resolution = ii(2)
+            self._position = ii(3)
+            self._healpix_index = ii(4)
             for bit in bits:
                 if bit.startswith('v') and len(bit) in [2, 3]:
                     self._version = bit
@@ -250,21 +251,36 @@ class PossumName(StorageName):
                 )
 
     def set_product_id(self):
-        if self.is_original:
+        if self.is_origin_pattern:
             self._product_id = self._file_id
         else:
             bits = self._file_id.split('_')
             if '_p3d_' in self._file_id:
-                if 'FDF_im_dirty' in self._file_id:
-                    self._product_id = 'FDF_im_dirty_3d_pipeline'
+                if 'FDF_im_dirty' in self._file_id or 'FDF_imag_dirty' in self._file_id:
+                    self._product_id = 'FDF_im_dirty_p3d'
                 elif 'FDF_real_dirty' in self._file_id:
-                    self._product_id = 'FDF_real_dirty_3d_pipeline'
+                    self._product_id = 'FDF_real_dirty_p3d'
                 elif 'FDF_tot_dirty' in self._file_id:
-                    self._product_id = 'FDF_tot_dirty_3d_pipeline'
-                elif 'FDF_tot_dirty' in self._file_id:
-                    self._product_id = 'RMSF_FWHM_3d_pipeline'
+                    self._product_id = 'FDF_tot_dirty_p3d'
+                elif 'RMSF_' in self._file_id:
+                    self._product_id = 'RMSF_p3d'
+                elif 'coeff' in self._file_id:
+                    self._product_id = 'coeff_p3d'
+                elif 'mpPeakPI' in self._file_id:
+                    self._product_id = 'amp_peak_pi_p3d'
+                elif 'reffreq' in self._file_id:
+                    self._product_id = 'reffreq_p3d'
+                elif 'snrPIfit' in self._file_id:
+                    self._product_id = 'snr_pi_fit_p3d'
+                elif 'racpol' in self._file_id.lower():
+                    self._product_id = 'frac_pol_p3d'
+                elif 'hiPeak' in self._file_id:
+                    self._product_id = 'phi_peak_pi_fit_p3d'
+                elif 'olAngle0' in self._file_id:
+                    self._product_id = 'pol_angle_0_fit_p3d'
                 else:
                     self._product_id = '3d_pipeline'
+                self._product_id = f'{self._product_id}_{self._version}'
             elif '_p1d_' in self._file_id:
                 # catalog in csv, spectra, FDF in BINTABLE
                 self._product_id = '1d_pipeline'

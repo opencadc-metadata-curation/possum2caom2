@@ -151,7 +151,7 @@ class PossumName(StorageName):
     @property
     def prev(self):
         """The preview file name for the file."""
-        return f'{self._obs_id}_{self._product_id}_prev.jpg'
+        return f'{self._obs_id}_{self._file_id}_prev.jpg'
 
     @property
     def spatial_resolution(self):

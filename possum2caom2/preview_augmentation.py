@@ -33,8 +33,6 @@ class PossumPreview(PreviewVisitor):
         If the file is a cube, it is collapsed along the third axis.
         """
         self._logger.debug(f'Begin generate_plots for {obs_id}')
-        if 'pipeline' in self.storage_name.product_id:
-            return 0
         count = 0
         # Get data and header:
         data = pf.getdata(self._science_fqn)
@@ -75,12 +73,13 @@ class PossumPreview(PreviewVisitor):
         self.add_preview(self._storage_name.prev_uri, self._storage_name.prev, ProductType.PREVIEW, ReleaseType.DATA)
         self.add_to_delete(self._preview_fqn)
 
-        self._array_to_jpeg(data, self._thumb_fqn, downscale_factor=8)
-        count += 1
-        self.add_preview(
-            self._storage_name.thumb_uri, self._storage_name.thumb, ProductType.THUMBNAIL, ReleaseType.META
-        )
-        self.add_to_delete(self._thumb_fqn)
+        if ('3d_pipeline' in self._storage_name.product_id and '') or '3d_pipeline' not in self._storage_name.product_id:
+            self._array_to_jpeg(data, self._thumb_fqn, downscale_factor=8)
+            count += 1
+            self.add_preview(
+                self._storage_name.thumb_uri, self._storage_name.thumb, ProductType.THUMBNAIL, ReleaseType.META
+            )
+            self.add_to_delete(self._thumb_fqn)
         self._logger.debug('End generate_plots')
         return count
 

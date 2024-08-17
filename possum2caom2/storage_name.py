@@ -263,7 +263,16 @@ class PossumName(StorageName):
                 elif 'FDF_tot_dirty' in self._file_id:
                     self._product_id = 'FDF_tot_dirty_p3d'
                 elif 'RMSF_' in self._file_id:
-                    self._product_id = 'RMSF_p3d'
+                    if 'RMSF_tot' in self._file_id:
+                        self._product_id = 'RMSF_tot_p3d'
+                    elif 'RMSF_FWHM' in self._file_id:
+                        self._product_id = 'RMSF_FWHM_p3d'
+                    elif 'RMSF_real' in self._file_id:
+                        self._product_id = 'RMSF_real_p3d'
+                    elif 'RMSF_im' in self._file_id:
+                        self._product_id = 'RMSF_im_p3d'
+                    else:
+                        self._product_id = 'RMSF_p3d'
                 elif 'coeff' in self._file_id:
                     self._product_id = 'coeff_p3d'
                 elif 'mpPeakPI' in self._file_id:

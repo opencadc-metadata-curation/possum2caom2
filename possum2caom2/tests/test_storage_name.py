@@ -123,7 +123,7 @@ def test_storage_name(test_config, test_name):
         test_check_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name.replace(".header", "")}'
         assert test_subject.file_uri == test_check_uri, f'wrong file uri {test_subject}'
         assert test_subject.destination_uris == [test_check_uri], f'wrong uris {test_subject}'
-        assert test_subject.prev == f'{test_subject.obs_id}_{test_subject.product_id}_prev.jpg', 'preview uri'
+        assert test_subject.prev == f'{test_subject.obs_id}_{test_subject.file_id}_prev.jpg', 'preview uri'
         assert test_subject.thumb == f'{test_subject.obs_id}_{test_subject.product_id}_prev_256.jpg', 'thumbnail uri'
         assert (
             test_subject.prev_uri == f'{test_config.preview_scheme}:{test_config.collection}/{test_subject.prev}'
@@ -144,8 +144,10 @@ def test_multi_product_id(test_config, test_data_dir, test_name):
         'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_dAmpPeakPIfit.fits': 'amp_peak_pi_p3d_v1',
         'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_coeff0err.fits': 'coeff_p3d_v1',
         'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_peakFDFimagFit.fits': '3d_pipeline_v1',
-        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_FWHM.fits': 'RMSF_p3d_v1',
-        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_im.fits': 'RMSF_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_FWHM.fits': 'RMSF_FWHM_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_im.fits': 'RMSF_im_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_tot.fits': 'RMSF_tot_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_real.fits': 'RMSF_real_p3d_v1',
         'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_dPolAngle0Fit_deg.fits': 'pol_angle_0_fit_p3d_v1',
         'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_dPhiPeakPIfit_rm2.fits': 'phi_peak_pi_fit_p3d_v1',
         'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_reffreq.fits': 'reffreq_p3d_v1',

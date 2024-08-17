@@ -483,7 +483,7 @@ class Output3DMapping(OutputSpatial):
             for chunk in part.chunks:
                 self._update_chunk_position(chunk)
                 if (
-                    'FDF_tot_dirty' in self._storage_name.file_name
+                    ('FDF_tot_dirty' in self._storage_name.file_name or 'RMSF_tot' in self._storage_name.file_name)
                     and chunk.naxis == 4
                     and chunk.position is not None
                     and chunk.custom is not None
@@ -624,6 +624,7 @@ class Catalog1DMapping(Possum1DMapping):
 
 
 def mapping_factory(storage_name, headers, clients, observable, observation, config):
+    result = None
     if storage_name.is_bintable:
         result = Catalog1DMapping(storage_name, headers, clients, observable, observation, config)
     elif '_p3d_' in storage_name._file_name:
@@ -634,12 +635,12 @@ def mapping_factory(storage_name, headers, clients, observable, observation, con
                 naxis = headers[1].get('NAXIS')
         if '_FWHM' in storage_name.file_name:
             if naxis:
-                if naxis == 3:
+                if naxis == 2:
+                    result = OutputSpatial(storage_name, headers, clients, observable, observation, config)
+                elif naxis == 3:
                     result = OutputCustomSpatial(storage_name, headers, clients, observable, observation, config)
                 elif naxis == 4:
                     result = OutputFWHM(storage_name, headers, clients, observable, observation, config)
-                else:
-                    raise CadcException(f'No mapping for {storage_name.file_name}.')
         else:
             if naxis and naxis == 2:
                 if 'pilot' in storage_name.file_name:
@@ -652,5 +653,7 @@ def mapping_factory(storage_name, headers, clients, observable, observation, con
         result = TaylorMapping(storage_name, headers, clients, observable, observation, config)
     else:
         result = InputTileMapping(storage_name, headers, clients, observable, observation, config)
+    if result is None:
+        raise CadcException(f'No mpaping for {storage_name.file_name}.')
     logging.debug(f'Constructed {result.__class__.__name__} for mapping {storage_name.file_name}.')
     return result

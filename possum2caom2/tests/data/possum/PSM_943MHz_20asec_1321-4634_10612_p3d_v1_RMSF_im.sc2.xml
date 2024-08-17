@@ -25,7 +25,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="b9b1ee0a-5c64-4c2f-9c6e-34cb7ca2d902" caom2:lastModified="2024-07-31T15:46:50.611" caom2:maxLastModified="2024-07-31T15:46:50.611" caom2:metaChecksum="md5:0ca94c40d03c7cbd0777750abfc937eb" caom2:accMetaChecksum="md5:e0fa784d1e30cfb358f06dfbff8ac5a5" caom2:metaProducer="possum2caom2/0.1.5">
-      <caom2:productID>RMSF_p3d_v1</caom2:productID>
+      <caom2:productID>RMSF_im_p3d_v1</caom2:productID>
       <caom2:metaRelease>2025-07-31T15:43:57.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>

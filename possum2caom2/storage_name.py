@@ -274,11 +274,9 @@ class PossumName(StorageName):
                     else:
                         self._product_id = 'RMSF_p3d'
                 elif 'coeff' in self._file_id:
-                    self._product_id = 'coeff_p3d'
+                    self._product_id = 'i_model_p3d'
                 elif 'mpPeakPI' in self._file_id:
                     self._product_id = 'amp_peak_pi_p3d'
-                elif 'reffreq' in self._file_id:
-                    self._product_id = 'reffreq_p3d'
                 elif 'snrPIfit' in self._file_id:
                     self._product_id = 'snr_pi_fit_p3d'
                 elif 'racpol' in self._file_id.lower():
@@ -288,7 +286,7 @@ class PossumName(StorageName):
                 elif 'olAngle0' in self._file_id:
                     self._product_id = 'pol_angle_0_fit_p3d'
                 else:
-                    self._product_id = '3d_pipeline'
+                    self._product_id = 'misc_p3d'
                 self._product_id = f'{self._product_id}_{self._version}'
             elif '_p1d_' in self._file_id:
                 # catalog in csv, spectra, FDF in BINTABLE

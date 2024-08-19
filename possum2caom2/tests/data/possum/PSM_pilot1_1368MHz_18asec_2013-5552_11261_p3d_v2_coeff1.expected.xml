@@ -26,7 +26,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="a5427ea5-42e1-4924-b2b0-fddcc8bc953e">
-      <caom2:productID>coeff_p3d_v2</caom2:productID>
+      <caom2:productID>i_model_p3d_v2</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>

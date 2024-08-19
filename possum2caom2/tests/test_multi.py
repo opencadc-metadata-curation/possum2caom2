@@ -85,8 +85,8 @@ import helpers
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 def test_main_app(header_mock, clients_mock, test_config, test_data_dir):
     # logging.getLogger().setLevel(logging.DEBUG)
-    test_dir = f'{test_data_dir}/multi'
-    test_expected_fqn = f'{test_dir}/PSM_944MHz_20asec_1034-5552_v1.expected.xml'
+    test_dir = f'{test_data_dir}/debug'
+    test_expected_fqn = f'{test_dir}/943MHz_20asec_1321-4634_10612_v1.expected.xml'
     actual_fqn = test_expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
         os.unlink(actual_fqn)
@@ -127,7 +127,7 @@ def test_main_app(header_mock, clients_mock, test_config, test_data_dir):
         if os.path.exists(test_expected_fqn):
             expected = mc.read_obs_from_file(test_expected_fqn)
             helpers.set_release_date_values(observation)
-            compare_result = get_differences(observation, expected)
+            compare_result = get_differences(expected, observation)
             if compare_result is not None:
                 mc.write_obs_to_file(observation, actual_fqn)
                 compare_text = '\n'.join([r for r in compare_result])

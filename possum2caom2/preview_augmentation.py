@@ -73,7 +73,10 @@ class PossumPreview(PreviewVisitor):
         self.add_preview(self._storage_name.prev_uri, self._storage_name.prev, ProductType.PREVIEW, ReleaseType.DATA)
         self.add_to_delete(self._preview_fqn)
 
-        if ('3d_pipeline' in self._storage_name.product_id and '') or '3d_pipeline' not in self._storage_name.product_id:
+        if (
+            ('_p3d_' in self._storage_name.product_id and '_coeff0.fits' in self._storage_name.file_name)
+            or '_p3d_' not in self._storage_name.product_id
+        ):
             self._array_to_jpeg(data, self._thumb_fqn, downscale_factor=8)
             count += 1
             self.add_preview(

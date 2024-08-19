@@ -25,7 +25,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="f0a3e511-be88-4c19-9e7d-9814b42f1c87" caom2:lastModified="2024-04-29T16:27:43.618" caom2:maxLastModified="2024-04-29T16:27:43.618" caom2:metaChecksum="md5:7efd7b396474b9ecad59ea2e2931bda0" caom2:accMetaChecksum="md5:c5b0ec54ee0bce5202d97629a68d5a76">
-      <caom2:productID>FDF_tot_dirty_3d_pipeline</caom2:productID>
+      <caom2:productID>FDF_tot_dirty_p3d_v2</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>

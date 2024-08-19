@@ -25,7 +25,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="82537fe2-c049-4d39-908a-f08e87a8a2f2" caom2:lastModified="2024-04-29T17:27:31.874" caom2:maxLastModified="2024-04-29T17:27:31.874" caom2:metaChecksum="md5:99cf50e84404716996c72942d26132a9" caom2:accMetaChecksum="md5:3b5c61c310ddd06885a8a2f68e30f0e0" caom2:metaProducer="possum2caom2/0.1.0">
-      <caom2:productID>3d_pipeline</caom2:productID>
+      <caom2:productID>snr_pi_fit_p3d_v1</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>

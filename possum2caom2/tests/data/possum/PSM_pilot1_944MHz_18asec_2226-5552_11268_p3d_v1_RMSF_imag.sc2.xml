@@ -25,7 +25,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="158ec3c2-a4c9-4418-abaf-10a53cb6c369" caom2:lastModified="2024-04-29T16:31:09.525" caom2:maxLastModified="2024-04-29T16:31:09.525" caom2:metaChecksum="md5:bf2b51433cfa942f9e2485f1a1555733" caom2:accMetaChecksum="md5:c0800988f49be28df750000020edc5e9" caom2:metaProducer="possum2caom2/0.1.0">
-      <caom2:productID>3d_pipeline</caom2:productID>
+      <caom2:productID>RMSF_im_p3d_v1</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>

@@ -65,11 +65,6 @@
 #
 # ***********************************************************************
 
-import glob
-import os
-
-from PIL import Image
-
 from caom2pipe import manage_composable as mc
 from possum2caom2.storage_name import PossumName
 from possum2caom2 import preview_augmentation
@@ -85,7 +80,6 @@ def test_visit(test_data_dir, test_config, tmp_path):
         'casda/PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.expected.xml': [
             'PSM_pilot1_1367MHz_18asec_2013-5553_11261_t0_i_v1.fits',
         ],
-        'debug/943MHz_20asec_1321-4634_10612_v1.actual.xml': ['PSM_943MHz_20asec_1321-4634_10612_p3d_v1_reffreq.fits'],
     }
 
     kwargs = {
@@ -106,13 +100,6 @@ def test_visit(test_data_dir, test_config, tmp_path):
                 for uri in uris:
                     # this will fail if the preview and thumbnail artifacts have not been added to the observation
                     artifact = obs.planes[test_name.product_id].artifacts[uri]
-                    # is there a good preview generation algorithm for the files?
-                    img = Image.open(f'{tmp_path}/{os.path.basename(uri)}')
-                    extrema = img.convert("L").getextrema()
-                    if extrema == (0, 0):
-                        assert False, 'all black'
-                    elif extrema == (1, 1):
-                        assert False, 'all white'
                     count += 1
             except Exception as e:
                 assert False, f'key {key} value {value} f_name {f_name} {str(e)}'

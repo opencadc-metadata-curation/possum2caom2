@@ -25,7 +25,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="e6bf062e-0beb-44c8-aa47-97681dd8e059" caom2:lastModified="2024-04-26T00:38:53.341" caom2:maxLastModified="2024-04-26T00:38:53.341" caom2:metaChecksum="md5:546b64ba610c78ba7f02a60819c75c5c" caom2:accMetaChecksum="md5:940a83cc9c6d787ad594c73477daff95">
-      <caom2:productID>3d_pipeline</caom2:productID>
+      <caom2:productID>i_model_p3d_v2</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>

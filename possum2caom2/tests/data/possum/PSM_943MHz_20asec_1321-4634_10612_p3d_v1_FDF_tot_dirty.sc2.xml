@@ -1,19 +1,18 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="01000000-0000-0000-80a9-e59f7bb85513">
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="c13e426c-41a1-484c-b953-b0eee13cc875" caom2:lastModified="2024-07-31T15:46:50.611" caom2:maxLastModified="2024-07-31T15:46:50.611" caom2:metaChecksum="md5:63c10ca8cc2ce3ea24186c417c45b599" caom2:accMetaChecksum="md5:d3ff202551dcbbe98e810c13422d63d1" caom2:metaProducer="possum2caom2/0.1.5">
   <caom2:collection>POSSUM</caom2:collection>
-  <caom2:observationID>944MHz_18asec_2226-5552_11268_pilot1_v1</caom2:observationID>
-  <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
+  <caom2:observationID>943MHz_20asec_1321-4634_10612_v1</caom2:observationID>
+  <caom2:metaRelease>2025-07-31T15:46:48.000</caom2:metaRelease>
   <caom2:metaReadGroups>
-    <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
-    <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
     <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>
+    <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
+    <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
   </caom2:metaReadGroups>
   <caom2:algorithm>
     <caom2:name>exposure</caom2:name>
   </caom2:algorithm>
   <caom2:intent>science</caom2:intent>
   <caom2:proposal>
-    <caom2:id>AS103</caom2:id>
+    <caom2:id>AS203</caom2:id>
   </caom2:proposal>
   <caom2:telescope>
     <caom2:name>ASKAP</caom2:name>
@@ -25,68 +24,66 @@
     <caom2:name>ASKAP</caom2:name>
   </caom2:instrument>
   <caom2:planes>
-    <caom2:plane caom2:id="ce21a21c-8800-4014-9125-13d5af75f9db" caom2:metaProducer="possum2caom2/0.1.0">
-      <caom2:productID>RMSF_real_p3d_v1</caom2:productID>
-      <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
+    <caom2:plane caom2:id="b9b1ee0a-5c64-4c2f-9c6e-34cb7ca2d902" caom2:lastModified="2024-07-31T15:46:50.611" caom2:maxLastModified="2024-07-31T15:46:50.611" caom2:metaChecksum="md5:0ca94c40d03c7cbd0777750abfc937eb" caom2:accMetaChecksum="md5:e0fa784d1e30cfb358f06dfbff8ac5a5" caom2:metaProducer="possum2caom2/0.1.5">
+      <caom2:productID>FDF_im_dirty_p3d_v1</caom2:productID>
+      <caom2:metaRelease>2025-07-31T15:43:57.000</caom2:metaRelease>
       <caom2:metaReadGroups>
-        <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
-        <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
       </caom2:metaReadGroups>
-      <caom2:dataRelease>2025-01-01T00:00:00.000</caom2:dataRelease>
+      <caom2:dataRelease>2025-07-31T15:43:57.000</caom2:dataRelease>
       <caom2:dataReadGroups>
-        <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM_Members</caom2:groupURI>
-        <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?POSSUM-RW</caom2:groupURI>
+        <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>
       </caom2:dataReadGroups>
       <caom2:dataProductType>cube</caom2:dataProductType>
       <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
         <caom2:name>POSSUM</caom2:name>
-        <caom2:producer>CASA 6.5.1-23 CASAtools:v1.0.0</caom2:producer>
+        <caom2:producer>POSSUM-Polarimetry-Pipeline</caom2:producer>
         <caom2:reference>https://possum-survey.org</caom2:reference>
-        <caom2:lastExecuted>2022-10-26T20:04:48.337320</caom2:lastExecuted>
+        <caom2:lastExecuted>2024-04-22T20:31:28.000</caom2:lastExecuted>
       </caom2:provenance>
       <caom2:position>
         <caom2:bounds xsi:type="caom2:Polygon">
           <caom2:points>
             <caom2:point>
-              <caom2:cval1>296.3618463040107</caom2:cval1>
-              <caom2:cval2>-15.378042220523199</caom2:cval2>
+              <caom2:cval1>198.62296276220547</caom2:cval1>
+              <caom2:cval2>-46.57184741342974</caom2:cval2>
             </caom2:point>
             <caom2:point>
-              <caom2:cval1>294.3731085133677</caom2:cval1>
-              <caom2:cval2>-15.378042220523199</caom2:cval2>
+              <caom2:cval1>201.00219730043304</caom2:cval1>
+              <caom2:cval2>-44.99388017545709</caom2:cval2>
             </caom2:point>
             <caom2:point>
-              <caom2:cval1>294.3731085133677</caom2:cval1>
-              <caom2:cval2>-13.634294511273339</caom2:cval2>
+              <caom2:cval1>201.72641098899697</caom2:cval1>
+              <caom2:cval2>-46.571847413429765</caom2:cval2>
             </caom2:point>
             <caom2:point>
-              <caom2:cval1>296.3618463040107</caom2:cval1>
-              <caom2:cval2>-13.634294511273353</caom2:cval2>
+              <caom2:cval1>199.2880685642494</caom2:cval1>
+              <caom2:cval2>-48.141207769592825</caom2:cval2>
             </caom2:point>
           </caom2:points>
           <caom2:samples>
             <caom2:vertices>
               <caom2:vertex>
-                <caom2:cval1>296.3618463040107</caom2:cval1>
-                <caom2:cval2>-15.378042220523177</caom2:cval2>
+                <caom2:cval1>201.726410988997</caom2:cval1>
+                <caom2:cval2>-46.57184741342973</caom2:cval2>
                 <caom2:type>2</caom2:type>
               </caom2:vertex>
               <caom2:vertex>
-                <caom2:cval1>294.3731085133677</caom2:cval1>
-                <caom2:cval2>-15.378042220523177</caom2:cval2>
+                <caom2:cval1>199.28806856424941</caom2:cval1>
+                <caom2:cval2>-48.141207769592825</caom2:cval2>
                 <caom2:type>1</caom2:type>
               </caom2:vertex>
               <caom2:vertex>
-                <caom2:cval1>294.3731085133677</caom2:cval1>
-                <caom2:cval2>-13.634294511273334</caom2:cval2>
+                <caom2:cval1>198.6229627622055</caom2:cval1>
+                <caom2:cval2>-46.57184741342973</caom2:cval2>
                 <caom2:type>1</caom2:type>
               </caom2:vertex>
               <caom2:vertex>
-                <caom2:cval1>296.3618463040107</caom2:cval1>
-                <caom2:cval2>-13.634294511273334</caom2:cval2>
+                <caom2:cval1>201.00219730043307</caom2:cval1>
+                <caom2:cval2>-44.99388017545708</caom2:cval2>
                 <caom2:type>1</caom2:type>
               </caom2:vertex>
               <caom2:vertex>
@@ -101,35 +98,35 @@
           <caom2:naxis1>2048</caom2:naxis1>
           <caom2:naxis2>2048</caom2:naxis2>
         </caom2:dimension>
-        <caom2:resolution>16.2</caom2:resolution>
-        <caom2:sampleSize>3.49582814761464</caom2:sampleSize>
+        <caom2:resolution>20.0000000000016</caom2:resolution>
+        <caom2:sampleSize>3.4958281476144037</caom2:sampleSize>
       </caom2:position>
       <caom2:energy/>
       <caom2:time/>
       <caom2:polarization>
         <caom2:states>
-          <caom2:state>Q</caom2:state>
+          <caom2:state>U</caom2:state>
         </caom2:states>
         <caom2:dimension>1</caom2:dimension>
       </caom2:polarization>
       <caom2:artifacts>
-        <caom2:artifact caom2:id="9d2f7323-78f4-4f48-8b26-402dae604928" caom2:metaProducer="possum2caom2/0.1.0">
-          <caom2:uri>cadc:POSSUM/PSM_pilot1_944MHz_18asec_2226-5552_11268_p3d_v1_RMSF_real.fits</caom2:uri>
+        <caom2:artifact caom2:id="7280a381-6b41-4f40-89c6-2199da3b2de3" caom2:lastModified="2024-07-31T15:46:50.611" caom2:maxLastModified="2024-07-31T15:46:50.611" caom2:metaChecksum="md5:3cf4c74268b2be44a9570d96c25de2d6" caom2:accMetaChecksum="md5:6e1c25d48a0b1bf633c1d0b97ffc3218" caom2:metaProducer="possum2caom2/0.1.5">
+          <caom2:uri>cadc:POSSUM/PSM_943MHz_20asec_1321-4634_10612_p3d_v1_FDF_im_dirty.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
-          <caom2:contentLength>10362</caom2:contentLength>
-          <caom2:contentChecksum>md5:90c524d1b6b0061f7a283ed7ec7ab877</caom2:contentChecksum>
+          <caom2:contentLength>5620377600</caom2:contentLength>
+          <caom2:contentChecksum>md5:6812c443b25fbbb04794cee7020807b2</caom2:contentChecksum>
           <caom2:parts>
-            <caom2:part caom2:id="24dd1362-608a-4d19-8ad1-f43874978596">
+            <caom2:part caom2:id="a86256c4-d977-4c17-b138-acc246145cba" caom2:lastModified="2024-07-31T15:46:50.611" caom2:maxLastModified="2024-07-31T15:46:50.611" caom2:metaChecksum="md5:aa6cd7fd3e63017c9070089f5fc344e2" caom2:accMetaChecksum="md5:f4f78feb247d730838e1957db58a7f88">
               <caom2:name>0</caom2:name>
               <caom2:chunks>
-                <caom2:chunk caom2:id="16a174d4-8eeb-4c9a-b0ad-39b32b451f81" caom2:metaProducer="possum2caom2/0.1.0">
+                <caom2:chunk caom2:id="4ae2222f-45b1-45cc-87cd-206ffd595553" caom2:lastModified="2024-07-31T15:46:50.611" caom2:maxLastModified="2024-07-31T15:46:50.611" caom2:metaChecksum="md5:5cafb54436339957fafaa406d691fd91" caom2:accMetaChecksum="md5:01a1db33ae8ce9e8f8e314a4b39ef6e2" caom2:metaProducer="possum2caom2/0.1.5">
                   <caom2:naxis>4</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
-                  <caom2:polarizationAxis>4</caom2:polarizationAxis>
-                  <caom2:customAxis>3</caom2:customAxis>
+                  <caom2:polarizationAxis>3</caom2:polarizationAxis>
+                  <caom2:customAxis>4</caom2:customAxis>
                   <caom2:position>
                     <caom2:axis>
                       <caom2:axis1>
@@ -147,11 +144,11 @@
                         </caom2:dimension>
                         <caom2:refCoord>
                           <caom2:coord1>
-                            <caom2:pix>-65534.00101999</caom2:pix>
+                            <caom2:pix>-149502.0023476</caom2:pix>
                             <caom2:val>0.0</caom2:val>
                           </caom2:coord1>
                           <caom2:coord2>
-                            <caom2:pix>18434.00030762</caom2:pix>
+                            <caom2:pix>-77822.00121428</caom2:pix>
                             <caom2:val>0.0</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
@@ -163,7 +160,7 @@
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
                     <caom2:equinox>2000.0</caom2:equinox>
-                    <caom2:resolution>16.2</caom2:resolution>
+                    <caom2:resolution>20.0000000000016</caom2:resolution>
                   </caom2:position>
                   <caom2:polarization>
                     <caom2:axis>
@@ -175,7 +172,7 @@
                         <caom2:delta>1.0</caom2:delta>
                         <caom2:refCoord>
                           <caom2:pix>1.0</caom2:pix>
-                          <caom2:val>2.0</caom2:val>
+                          <caom2:val>3.0</caom2:val>
                         </caom2:refCoord>
                       </caom2:function>
                     </caom2:axis>
@@ -187,11 +184,11 @@
                         <caom2:cunit>rad/m**2</caom2:cunit>
                       </caom2:axis>
                       <caom2:function>
-                        <caom2:naxis>803</caom2:naxis>
-                        <caom2:delta>3.0</caom2:delta>
+                        <caom2:naxis>335</caom2:naxis>
+                        <caom2:delta>12.0</caom2:delta>
                         <caom2:refCoord>
-                          <caom2:pix>201.0</caom2:pix>
-                          <caom2:val>-1203.0</caom2:val>
+                          <caom2:pix>168.0</caom2:pix>
+                          <caom2:val>0.0</caom2:val>
                         </caom2:refCoord>
                       </caom2:function>
                     </caom2:axis>

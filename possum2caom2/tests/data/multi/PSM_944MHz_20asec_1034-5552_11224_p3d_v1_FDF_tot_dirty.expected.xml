@@ -26,7 +26,7 @@
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="0e9c3e84-a387-4f7b-8634-13e587dadf50" caom2:metaProducer="test_possum/0.0.0">
-      <caom2:productID>3d_pipeline</caom2:productID>
+      <caom2:productID>misc_p3d_v1</caom2:productID>
       <caom2:metaRelease>2025-01-01T00:00:00.000</caom2:metaRelease>
       <caom2:metaReadGroups>
         <caom2:groupURI>ivo://cadc.nrc.ca/gms?CADC</caom2:groupURI>

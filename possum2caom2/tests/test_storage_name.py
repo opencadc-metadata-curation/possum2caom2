@@ -74,11 +74,14 @@ from possum2caom2.storage_name import PossumName
 
 def pytest_generate_tests(metafunc):
     test_data_dir = f'{metafunc.config.invocation_dir}/data'
-    obs_id_list = glob(f'{test_data_dir}/possum/*.fits.header')
+    obs_id_list = glob(f'{test_data_dir}/**/*.fits.header')
     metafunc.parametrize('test_name', obs_id_list)
 
 
 def test_storage_name(test_config, test_name):
+    if '/possum/' not in test_name:
+        return
+
     test_obs_ids = [
         '1368MHz_18asec_2031-5249_11073_pilot1_v1',
         '1367MHz_18asec_2013-5553_11261_pilot1_v1',
@@ -101,14 +104,7 @@ def test_storage_name(test_config, test_name):
         assert test_subject.obs_id in test_obs_ids, f'wrong obs id {test_f_name} {test_subject}'
         assert test_subject.source_names == [entry], f'wrong source names {test_f_name}'
         if 'p3d' in entry:
-            if 'FDF_tot_dirty' in entry:
-                assert test_subject.product_id == 'FDF_tot_dirty_3d_pipeline', f'wrong product id {test_subject.product_id}'
-            elif 'FDF_im_dirty' in entry:
-                assert test_subject.product_id == 'FDF_im_dirty_3d_pipeline', f'wrong product id {test_subject.product_id}'
-            elif 'FDF_real_dirty' in entry:
-                assert test_subject.product_id == 'FDF_real_dirty_3d_pipeline', f'wrong product id {test_subject.product_id}'
-            else:
-                assert test_subject.product_id == '3d_pipeline', f'wrong product id {test_subject.product_id}'
+            pass  # there's a different test for p3d product id values
         elif 'p1d' in entry:
             assert test_subject.product_id == '1d_pipeline', f'wrong product id {test_subject.product_id}'
         else:
@@ -127,7 +123,7 @@ def test_storage_name(test_config, test_name):
         test_check_uri = f'{test_config.scheme}:{test_config.collection}/{test_f_name.replace(".header", "")}'
         assert test_subject.file_uri == test_check_uri, f'wrong file uri {test_subject}'
         assert test_subject.destination_uris == [test_check_uri], f'wrong uris {test_subject}'
-        assert test_subject.prev == f'{test_subject.obs_id}_{test_subject.product_id}_prev.jpg', 'preview uri'
+        assert test_subject.prev == f'{test_subject.obs_id}_{test_subject.file_id}_prev.jpg', 'preview uri'
         assert test_subject.thumb == f'{test_subject.obs_id}_{test_subject.product_id}_prev_256.jpg', 'thumbnail uri'
         assert (
             test_subject.prev_uri == f'{test_config.preview_scheme}:{test_config.collection}/{test_subject.prev}'
@@ -135,3 +131,39 @@ def test_storage_name(test_config, test_name):
         assert (
             test_subject.thumb_uri == f'{test_config.preview_scheme}:{test_config.collection}/{test_subject.thumb}'
         ), 'thumbnail uri'
+
+
+def test_multi_product_id(test_config, test_data_dir, test_name):
+    expected = {
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_FDF_real_dirty.fits': 'FDF_real_dirty_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_coeff1.fits': 'i_model_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_peakFDFrealFit.fits': 'misc_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_ampPeakPIfit.fits': 'amp_peak_pi_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_snrPIfit.fits': 'snr_pi_fit_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_dFracpol.fits': 'frac_pol_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_dAmpPeakPIfit.fits': 'amp_peak_pi_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_coeff0err.fits': 'i_model_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_peakFDFimagFit.fits': 'misc_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_FWHM.fits': 'RMSF_FWHM_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_im.fits': 'RMSF_im_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_tot.fits': 'RMSF_tot_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_RMSF_real.fits': 'RMSF_real_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_dPolAngle0Fit_deg.fits': 'pol_angle_0_fit_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_dPhiPeakPIfit_rm2.fits': 'phi_peak_pi_fit_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_reffreq.fits': 'misc_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_coeff0.fits': 'i_model_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_coeff1err.fits': 'i_model_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_fracpol.fits': 'frac_pol_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_phiPeakPIfit_rm2.fits': 'phi_peak_pi_fit_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_polAngle0Fit_deg.fits': 'pol_angle_0_fit_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_lam0Sq_m2.fits': 'misc_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_FDF_im_dirty.fits': 'FDF_im_dirty_p3d_v1',
+        'PSM_944MHz_20asec_1034-5552_11224_p3d_v1_FDF_tot_dirty.fits': 'FDF_tot_dirty_p3d_v1',
+    }
+
+    if '/multi/' not in test_name:
+        return
+
+    test_subject = PossumName(test_name)
+    assert test_subject.file_name in expected, f'unexpected test_case {test_name}'
+    assert expected[test_subject.file_name] == test_subject.product_id, f'wrong product id {test_subject.product_id}'

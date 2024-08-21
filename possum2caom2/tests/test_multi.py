@@ -84,9 +84,8 @@ import helpers
 @patch('possum2caom2.possum_execute.RCloneClients')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 def test_main_app(header_mock, clients_mock, test_config, test_data_dir):
-    # logging.getLogger().setLevel(logging.DEBUG)
-    test_dir = f'{test_data_dir}/debug'
-    test_expected_fqn = f'{test_dir}/943MHz_20asec_1321-4634_10612_v1.expected.xml'
+    test_dir = f'{test_data_dir}/multi'
+    test_expected_fqn = f'{test_dir}/PSM_944MHz_20asec_1034-5552_v1.expected.xml'
     actual_fqn = test_expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
         os.unlink(actual_fqn)
@@ -97,7 +96,7 @@ def test_main_app(header_mock, clients_mock, test_config, test_data_dir):
     observation = None
     for f_name in f_list:
         def _sandbox_mock(_, obs_id):
-            sc2_name = f_name.replace('.fits.header', '.sc2.xml')
+            sc2_name = f_name.replace('.fits.header', '.sc2.xml').replace('.fits.fz.header', '.sc2.xml')
             if os.path.exists(sc2_name):
                 return mc.read_obs_from_file(sc2_name)
             else:

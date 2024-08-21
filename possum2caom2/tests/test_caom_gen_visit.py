@@ -85,7 +85,9 @@ def pytest_generate_tests(metafunc):
     test_data_dir = f'{metafunc.config.invocation_dir}/data'
     obs_id_list = glob.glob(f'{test_data_dir}/casda/*.fits.header')
     obs_id_list_out = glob.glob(f'{test_data_dir}/possum/*.fits.header')
+    obs_id_list_out_fz = glob.glob(f'{test_data_dir}/possum/*.fits.fz.header')
     obs_id_list += obs_id_list_out
+    obs_id_list += obs_id_list_out_fz
     metafunc.parametrize('test_name', obs_id_list)
 
 
@@ -96,7 +98,7 @@ def test_main_app(header_mock, clients_mock, test_config, test_name):
     clients_mock.metadata_client.read.return_value = None
 
     def _sandbox_mock(_, obs_id):
-        return mc.read_obs_from_file(test_name.replace('.fits.header', '.sc2.xml'))
+        return mc.read_obs_from_file(test_name.replace('.fits.header', '.sc2.xml').replace('.fits.fz.header', '.sc2.xml'))
 
     clients_mock.server_side_ctor_client.read.side_effect = _sandbox_mock
     storage_name = PossumName(entry=test_name)
@@ -114,7 +116,7 @@ def test_main_app(header_mock, clients_mock, test_config, test_name):
         'clients': clients_mock,
         'observable': test_observable,
     }
-    expected_fqn = f'{test_name.replace(".fits.header", "")}.expected.xml'
+    expected_fqn = f'{test_name.replace(".fits.header", "").replace(".fits.fz.header", "")}.expected.xml'
     in_fqn = expected_fqn.replace('.expected', '.in')
     actual_fqn = expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
@@ -130,7 +132,7 @@ def test_main_app(header_mock, clients_mock, test_config, test_name):
         if os.path.exists(expected_fqn):
             expected = mc.read_obs_from_file(expected_fqn)
             helpers.set_release_date_values(observation)
-            compare_result = get_differences(observation, expected)
+            compare_result = get_differences(expected, observation)
             if compare_result is not None:
                 mc.write_obs_to_file(observation, actual_fqn)
                 compare_text = '\n'.join([r for r in compare_result])

@@ -114,11 +114,11 @@
       </caom2:polarization>
       <caom2:artifacts>
         <caom2:artifact caom2:id="0ebec7e2-7318-413a-9641-5f3bbe23c162" caom2:metaProducer="test_possum/0.0.0">
-          <caom2:uri>cadc:POSSUM/PSM_943MHz_20asec_1321-4634_10612_p3d_v1_RMSF_im.fits</caom2:uri>
+          <caom2:uri>cadc:POSSUM/PSM_943MHz_20asec_1321-4634_10612_p3d_v1_RMSF_im.fits.fz</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
-          <caom2:contentLength>4008</caom2:contentLength>
+          <caom2:contentLength>8505</caom2:contentLength>
           <caom2:contentChecksum>md5:8a668d06ebff11a8c3ee6cc37afbe068</caom2:contentChecksum>
           <caom2:parts>
             <caom2:part caom2:id="31f963eb-85b2-4a4e-8f56-f1d4c346dc26">

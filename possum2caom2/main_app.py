@@ -632,7 +632,7 @@ def mapping_factory(storage_name, headers, clients, observable, observation, con
         if headers and len(headers) > 0:
             naxis = headers[0].get('NAXIS')
             if len(headers) > 1:
-                naxis = headers[1].get('NAXIS')
+                naxis = headers[1].get('ZNAXIS')
         if '_FWHM' in storage_name.file_name:
             if naxis:
                 if naxis == 2:

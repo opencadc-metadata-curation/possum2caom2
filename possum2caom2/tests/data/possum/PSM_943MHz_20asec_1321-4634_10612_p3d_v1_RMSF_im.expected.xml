@@ -121,10 +121,6 @@
           <caom2:contentLength>8505</caom2:contentLength>
           <caom2:contentChecksum>md5:8a668d06ebff11a8c3ee6cc37afbe068</caom2:contentChecksum>
           <caom2:parts>
-            <caom2:part caom2:id="31f963eb-85b2-4a4e-8f56-f1d4c346dc26">
-              <caom2:name>0</caom2:name>
-              <caom2:chunks/>
-            </caom2:part>
             <caom2:part caom2:id="b0e3ebe3-db49-415e-aabb-e1377133bcc0">
               <caom2:name>1</caom2:name>
               <caom2:chunks>

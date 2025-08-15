@@ -94,7 +94,7 @@ from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
 from caom2pipe import caom_composable as cc
 from caom2pipe.client_composable import repo_create, repo_delete, repo_get
-from caom2pipe.manage_composable import CadcException, get_keyword, TaskType, ValueRepairCache
+from caom2pipe.manage_composable import CadcException, get_keyword, TaskType, ValueRepairCache, write_obs_to_file
 
 
 __all__ = ['mapping_factory']
@@ -212,6 +212,7 @@ class Possum1DMapping(cc.TelescopeMapping):
             except CadcException as e:
                 # ignore delete failures as it's most likely a Not Found exception
                 pass
+            write_obs_to_file(self._observation, './x.xml')
             repo_create(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
             server_side_observation = repo_get(
                 self._clients.server_side_ctor_client,
@@ -234,34 +235,33 @@ class Possum1DMapping(cc.TelescopeMapping):
         # do not clean up the Part, Chunk information, because it's used for cutout support
 
     def _update_artifact(self, artifact):
-        if 'pilot' in self._storage_name.file_name:
-            delete_these = []
-            for part in artifact.parts.values():
-                if len(part.chunks) == 0:
-                    delete_these.append(part.name)
-                else:
-                    for chunk in part.chunks:
-                        if (
-                            chunk.custom is None
-                            and chunk.energy is None
-                            and chunk.observable is None
-                            and chunk.polarization is None
-                            and chunk.position is None
-                            and chunk.time is None
-                        ) or (  # handle the Taylor BINTABLE extension case
-                            chunk.custom is None
-                            and chunk.energy is None
-                            and chunk.observable is None
-                            and chunk.polarization is None
-                            and chunk.position is None
-                            and chunk.time is not None
-                        ):
-                            delete_these.append(part.name)
-                            break
+        delete_these = []
+        for part in artifact.parts.values():
+            if len(part.chunks) == 0:
+                delete_these.append(part.name)
+            else:
+                for chunk in part.chunks:
+                    if (
+                        chunk.custom is None
+                        and chunk.energy is None
+                        and chunk.observable is None
+                        and chunk.polarization is None
+                        and chunk.position is None
+                        and chunk.time is None
+                    ) or (  # handle the Taylor BINTABLE extension case
+                        chunk.custom is None
+                        and chunk.energy is None
+                        and chunk.observable is None
+                        and chunk.polarization is None
+                        and chunk.position is None
+                        and chunk.time is not None
+                    ):
+                        delete_these.append(part.name)
+                        break
 
-            for entry in delete_these:
-                artifact.parts.pop(entry)
-                self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
+        for entry in delete_these:
+            artifact.parts.pop(entry)
+            self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
 
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):

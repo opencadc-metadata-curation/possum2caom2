@@ -733,6 +733,9 @@ class ExecutionUnit:
         self._logger.debug('Begin _rename')
         work = glob.glob('**/*.fits', root_dir=self._working_directory, recursive=True)
         for file_name in work:
+            # ignore renamed files that are left around under failure conditions
+            if file_name.startswith('PSM_'):
+                continue
             self._logger.info(f'Working on {file_name}')
             found_storage_name = None
             for storage_name in self._remote_metadata_reader.storage_names.values():

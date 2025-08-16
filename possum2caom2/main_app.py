@@ -94,7 +94,7 @@ from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
 from caom2pipe import caom_composable as cc
 from caom2pipe.client_composable import repo_create, repo_delete, repo_get
-from caom2pipe.manage_composable import CadcException, get_keyword, TaskType, ValueRepairCache
+from caom2pipe.manage_composable import CadcException, get_keyword, TaskType, ValueRepairCache, write_obs_to_file
 
 
 __all__ = ['mapping_factory']
@@ -154,7 +154,7 @@ class Possum1DMapping(cc.TelescopeMapping):
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
 
-            # the super call removes empty Parts before sending the Observation for server-side computing here
+            # the super call, via _update_artifact, removes empty Parts before sending the Observation for server-side computing here
             for plane in self._observation.planes.values():
                 if plane.product_id == self._storage_name.product_id:
                     self._post_plane_update(plane)
@@ -202,15 +202,22 @@ class Possum1DMapping(cc.TelescopeMapping):
         return result
 
     def _post_plane_update(self, plane):
+        self._logger.debug(f'Begin _post_plane_update for {plane.product_id}')
         if TaskType.SCRAPE in self._config.task_types:
             self._logger.warning(f'No plane metadata update for {self._observation.observation_id}')
         else:
             # write the observation to the client which is configured for server-side metadata creation at the plane
             # level read the computed metadata from that CAOM service and copy the Plane-level bits
             try:
-                repo_delete(self._clients.server_side_ctor_client, self._observation.collection, self._observation.observation_id, self._observable.metrics)
+                repo_delete(
+                    self._clients.server_side_ctor_client, 
+                    self._observation.collection, 
+                    self._observation.observation_id, 
+                    self._observable.metrics
+                )
             except CadcException as e:
                 # ignore delete failures as it's most likely a Not Found exception
+                self._logger.info(f'Pre-cleanup not found {self._observation.observation_id}')
                 pass
             repo_create(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
             server_side_observation = repo_get(
@@ -232,36 +239,36 @@ class Possum1DMapping(cc.TelescopeMapping):
                         plane.time = computed_plane.time
 
         # do not clean up the Part, Chunk information, because it's used for cutout support
+        self._logger.debug('End _post_plane_update')
 
     def _update_artifact(self, artifact):
-        if 'pilot' in self._storage_name.file_name:
-            delete_these = []
-            for part in artifact.parts.values():
-                if len(part.chunks) == 0:
-                    delete_these.append(part.name)
-                else:
-                    for chunk in part.chunks:
-                        if (
-                            chunk.custom is None
-                            and chunk.energy is None
-                            and chunk.observable is None
-                            and chunk.polarization is None
-                            and chunk.position is None
-                            and chunk.time is None
-                        ) or (  # handle the Taylor BINTABLE extension case
-                            chunk.custom is None
-                            and chunk.energy is None
-                            and chunk.observable is None
-                            and chunk.polarization is None
-                            and chunk.position is None
-                            and chunk.time is not None
-                        ):
-                            delete_these.append(part.name)
-                            break
+        delete_these = []
+        for part in artifact.parts.values():
+            if len(part.chunks) == 0:
+                delete_these.append(part.name)
+            else:
+                for chunk in part.chunks:
+                    if (
+                        chunk.custom is None
+                        and chunk.energy is None
+                        and chunk.observable is None
+                        and chunk.polarization is None
+                        and chunk.position is None
+                        and chunk.time is None
+                    ) or (  # handle the Taylor BINTABLE extension case
+                        chunk.custom is None
+                        and chunk.energy is None
+                        and chunk.observable is None
+                        and chunk.polarization is None
+                        and chunk.position is None
+                        and chunk.time is not None
+                    ):
+                        delete_these.append(part.name)
+                        break
 
-            for entry in delete_these:
-                artifact.parts.pop(entry)
-                self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
+        for entry in delete_these:
+            artifact.parts.pop(entry)
+            self._logger.info(f'Deleting part {entry} from artifact {artifact.uri}')
 
     @staticmethod
     def _from_pc_to_cd(from_header, to_header):

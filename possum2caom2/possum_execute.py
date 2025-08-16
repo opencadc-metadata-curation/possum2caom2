@@ -743,18 +743,21 @@ class ExecutionUnit:
                     found_storage_name = storage_name
                     break
 
-            original_fqn = os.path.join(self._working_directory, file_name)
-            self._remote_metadata_reader.set_headers(found_storage_name, original_fqn)
-            # TODO - not quite sure which header index to return :)
-            headers = self._remote_metadata_reader.headers.get(found_storage_name.file_uri)
-            if headers:
-                renamed_file = self._find_new_file_name(headers[0], ('mfs' in found_storage_name.file_name))
-                found_storage_name.set_staging_name(renamed_file)
-                renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)
-                os.rename(original_fqn, renamed_fqn)
-                self._logger.info(f'Renamed {original_fqn} to {renamed_fqn}.')
+            if found_storage_name:
+                original_fqn = os.path.join(self._working_directory, file_name)
+                self._remote_metadata_reader.set_headers(found_storage_name, original_fqn)
+                # TODO - not quite sure which header index to return :)
+                headers = self._remote_metadata_reader.headers.get(found_storage_name.file_uri)
+                if headers:
+                    renamed_file = self._find_new_file_name(headers[0], ('mfs' in found_storage_name.file_name))
+                    found_storage_name.set_staging_name(renamed_file)
+                    renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)
+                    os.rename(original_fqn, renamed_fqn)
+                    self._logger.info(f'Renamed {original_fqn} to {renamed_fqn}.')
+                else:
+                    self._logger.warning(f'Could not find headers for {file_name}')
             else:
-                self._logger.warning(f'Could not find headers for {file_name}')
+                self._logger.warning(f'Could not  find storage name record for {file_name}')
         self._logger.debug('End _rename')
 
     def _set_up_file_logging(self):

@@ -154,7 +154,7 @@ class Possum1DMapping(cc.TelescopeMapping):
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
 
-            # the super call removes empty Parts before sending the Observation for server-side computing here
+            # the super call, via _update_artifact, removes empty Parts before sending the Observation for server-side computing here
             for plane in self._observation.planes.values():
                 if plane.product_id == self._storage_name.product_id:
                     self._post_plane_update(plane)
@@ -202,17 +202,23 @@ class Possum1DMapping(cc.TelescopeMapping):
         return result
 
     def _post_plane_update(self, plane):
+        self._logger.debug(f'Begin _post_plane_update for {plane.product_id}')
         if TaskType.SCRAPE in self._config.task_types:
             self._logger.warning(f'No plane metadata update for {self._observation.observation_id}')
         else:
             # write the observation to the client which is configured for server-side metadata creation at the plane
             # level read the computed metadata from that CAOM service and copy the Plane-level bits
             try:
-                repo_delete(self._clients.server_side_ctor_client, self._observation.collection, self._observation.observation_id, self._observable.metrics)
+                repo_delete(
+                    self._clients.server_side_ctor_client, 
+                    self._observation.collection, 
+                    self._observation.observation_id, 
+                    self._observable.metrics
+                )
             except CadcException as e:
                 # ignore delete failures as it's most likely a Not Found exception
+                self._logger.info(f'Pre-cleanup not found {self._observation.observation_id}')
                 pass
-            write_obs_to_file(self._observation, './x.xml')
             repo_create(self._clients.server_side_ctor_client, self._observation, self._observable.metrics)
             server_side_observation = repo_get(
                 self._clients.server_side_ctor_client,
@@ -233,6 +239,7 @@ class Possum1DMapping(cc.TelescopeMapping):
                         plane.time = computed_plane.time
 
         # do not clean up the Part, Chunk information, because it's used for cutout support
+        self._logger.debug('End _post_plane_update')
 
     def _update_artifact(self, artifact):
         delete_these = []

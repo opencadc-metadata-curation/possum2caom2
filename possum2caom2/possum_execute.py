@@ -662,27 +662,31 @@ class ExecutionUnit:
         crpix2 = hdr.get('CRPIX2')
         crval1, crval2 = hpx_ref_wcs.wcs_pix2world(-crpix1, -crpix2 , 0)
         tileID = hp.lonlat_to_healpix(crval1 * units.deg, crval2 * units.deg, return_offsets=False)
-        tileID = tileID - 1 #shifts by 1.
+        outname = ''
+        if tileID > 0:
+            tileID = tileID - 1 #shifts by 1.
 
-        # extract the RA and DEC for a specific pixel
-        center = hp.healpix_to_lonlat(tileID) * units.deg
-        RA, DEC = center.value
+            # extract the RA and DEC for a specific pixel
+            center = hp.healpix_to_lonlat(tileID) * units.deg
+            RA, DEC = center.value
 
-        self._logger.info(f'Derived RA is {RA} degrees and DEC is {DEC} degrees')
-        c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')
-        # coordinate string as "hhmm-ddmm"
-        hmdm = self._RADEC_hms_dms_to_string(c)
+            self._logger.info(f'Derived RA is {RA} degrees and DEC is {DEC} degrees')
+            c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')
+            # coordinate string as "hhmm-ddmm"
+            hmdm = self._RADEC_hms_dms_to_string(c)
 
-        if mfs:
-            outname = (
-                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_t0_{stokesid}_'
-                f'{self._config.lookup.get('rename_version')}.fits'
-            )
+            if mfs:
+                outname = (
+                    f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_t0_{stokesid}_'
+                    f'{self._config.lookup.get('rename_version')}.fits'
+                )
+            else:
+                outname = (
+                    f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_{stokesid}_'
+                    f'{self._config.lookup.get('rename_version')}.fits'
+                )
         else:
-            outname = (
-                f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_{stokesid}_'
-                f'{self._config.lookup.get('rename_version')}.fits'
-            )
+            self._logger.error(f'tileID is {tileID}. Error in metadata.')
         return outname
 
     def _reference_header(self, naxis, cdelt):
@@ -733,9 +737,6 @@ class ExecutionUnit:
         self._logger.debug('Begin _rename')
         work = glob.glob('**/*.fits', root_dir=self._working_directory, recursive=True)
         for file_name in work:
-            # ignore renamed files that are left around under failure conditions
-            if file_name.startswith('PSM_'):
-                continue
             self._logger.info(f'Working on {file_name}')
             found_storage_name = None
             for storage_name in self._remote_metadata_reader.storage_names.values():
@@ -750,10 +751,14 @@ class ExecutionUnit:
                 headers = self._remote_metadata_reader.headers.get(found_storage_name.file_uri)
                 if headers:
                     renamed_file = self._find_new_file_name(headers[0], ('mfs' in found_storage_name.file_name))
-                    found_storage_name.set_staging_name(renamed_file)
-                    renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)
-                    os.rename(original_fqn, renamed_fqn)
-                    self._logger.info(f'Renamed {original_fqn} to {renamed_fqn}.')
+                    if renamed_file:
+                        found_storage_name.set_staging_name(renamed_file)
+                        renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)
+                        os.rename(original_fqn, renamed_fqn)
+                        self._logger.info(f'Renamed {original_fqn} to {renamed_fqn}.')
+                    else:
+                        del self._remote_metadata_reader.storage_names[found_storage_name.file_uri]
+                        self._logger.error(f'Removed {found_storage_name.file_name} from list of work.')
                 else:
                     self._logger.warning(f'Could not find headers for {file_name}')
             else:

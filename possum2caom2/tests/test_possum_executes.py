@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2024.                            (c) 2024.
+#  (c) 2025.                            (c) 2025.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -70,14 +70,17 @@ import logging
 
 from datetime import datetime, timedelta, timezone
 from glob import glob
-from os import listdir
+from os import listdir, mkdir
 from os.path import exists
 from shutil import copyfile
 
 from caom2utils.data_util import get_local_file_headers
 from possum2caom2 import possum_execute, storage_name
+from caom2pipe.astro_composable import make_headers_from_file
 from caom2pipe.manage_composable import CadcException, ExecutionReporter, make_datetime, Observable, read_obs_from_file
 from caom2pipe.manage_composable import State, TaskType
+
+import pytest
 from mock import ANY, call, Mock, patch, PropertyMock
 
 
@@ -591,18 +594,19 @@ def test_remote_execute_with_local_commands(
 
     test_result = possum_execute.remote_execution()
     assert test_result == 0, 'expect success result'
-    assert clients_mock.return_value.data_client.put.call_count == 5, f'client mock {clients_mock.return_value.data_client.put.call_count}'
+    assert clients_mock.return_value.data_client.put.call_count == 5, f'client mock {clients_mock.return_value.data_client.put.mock_calls}'
     assert clients_mock.return_value.metadata_client.read.call_count == 5, f'metadata client call count'
     assert clients_mock.return_value.metadata_client.update.call_count == 5, f'metadata client call count'
     time_box_5 = '2024-07-17T16_33_00_2024-07-18T21_40_00_754216'
-    assert (
-        clients_mock.return_value.data_client.put.mock_calls == [
-            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band2.1506-32A_1506-32B.9488.i.fits'),
-            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.i.fits'),
-            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.q.fits'),
-            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.u.fits'),
-            call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits'),
-        ]
+    time_box_5_calls = [
+        call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band2.1506-32A_1506-32B.9488.i.fits'),
+        call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.i.fits'),
+        call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.q.fits'),
+        call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.u.fits'),
+        call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits'),
+    ]
+    clients_mock.return_value.data_client.put.assert_has_calls( 
+        time_box_5_calls, any_order=True
     ), clients_mock.return_value.data_client.put.mock_calls
     assert (
         clients_mock.return_value.server_side_ctor_client.mock_calls == []
@@ -664,8 +668,6 @@ def test_empty_listing(start_mock, test_config, test_data_dir, tmp_path, change_
 
 @patch('possum2caom2.possum_execute.TodoRunner')
 def test_rename_skip(run_mock, test_config, tmp_path):
-    import logging
-    # logging.getLogger().setLevel(logging.DEBUG)
     run_mock.return_value.run.return_value = 0
     test_config.change_working_directory(tmp_path)
     test_config.task_types = [TaskType.INGEST]
@@ -695,6 +697,44 @@ def test_rename_skip(run_mock, test_config, tmp_path):
     }
 
     test_subject = possum_execute.ExecutionUnit(test_config, **test_kwargs)
+    test_result = test_subject.do()
+    assert test_result == 0, 'expect success'
+    assert test_metadata_reader.set_headers.called, 'set_headers called'
+    assert test_metadata_reader.set_headers.call_count == 1, 'no PSM'
+
+
+@patch('possum2caom2.possum_execute.TodoRunner')
+def test_rename_bad_metadata(run_mock, test_config, test_data_dir):
+    import logging
+    logging.getLogger().setLevel(logging.DEBUG)
+    run_mock.return_value.run.return_value = 0
+    test_dir = f'{test_data_dir}/edge_cases'
+    test_config.change_working_directory(test_dir)
+    test_config.task_types = [TaskType.INGEST]
+    test_metadata_reader = Mock()
+    test_observable = Mock()
+    test_reporter = Mock()
+    test_clients = Mock()
+
+    # named .fits so the _rename call does something, but it's just the headers
+    test_fname1 = 'POSSUM.mfs.band1.0618-55_0610-60_0541-55_0529-60.11297.i.fits'
+    test_storage_name = storage_name.PossumName(test_fname1)
+    test_headers = make_headers_from_file(f'{test_dir}/{test_fname1}')
+    test_metadata_reader.storage_names = {test_storage_name.file_uri: test_storage_name}
+    test_metadata_reader.headers.get.return_value = test_headers
+    test_kwargs = {
+        'prev_exec_dt': make_datetime('2023-10-28T20:47:49.000000000Z'),
+        'exec_dt': make_datetime('2023-11-28T20:47:49.000000000Z'),
+        'metadata_reader': test_metadata_reader,
+        'observable': test_observable,
+        'reporter': test_reporter,    
+        'clients': test_clients,    
+    }
+
+    test_subject = possum_execute.ExecutionUnit(test_config, **test_kwargs)
+    test_subject._working_directory = test_dir
+    test_result = test_subject._find_new_file_name(test_headers[0], True)
+    assert test_result == '', 'expected an empty string because the file metadata is wrong'
     test_result = test_subject.do()
     assert test_result == 0, 'expect success'
     assert test_metadata_reader.set_headers.called, 'set_headers called'

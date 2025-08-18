@@ -660,3 +660,43 @@ def test_empty_listing(start_mock, test_config, test_data_dir, tmp_path, change_
     assert test_clients.metadata_client.read.call_count == 0, f'metadata client call count'
     assert test_clients.metadata_client.update.call_count == 0, f'metadata client call count'
     assert start_mock.call_count == 0, f'wrong start call count {start_mock.call_count}'
+
+
+@patch('possum2caom2.possum_execute.TodoRunner')
+def test_rename_skip(run_mock, test_config, tmp_path):
+    import logging
+    # logging.getLogger().setLevel(logging.DEBUG)
+    run_mock.return_value.run.return_value = 0
+    test_config.change_working_directory(tmp_path)
+    test_config.task_types = [TaskType.INGEST]
+    test_metadata_reader = Mock()
+    test_observable = Mock()
+    test_reporter = Mock()
+    test_clients = Mock()
+
+    test_fname1 = 'POSSUM.mfs.band1.0144-46_0214-46_0204-41.10314.i.fits'
+    test_fname2 = 'PSM_944MHz_20asec_0144-4600_0214-4600_0204-4100_10314_i_v1.fits'
+    test_dir = f'{tmp_path}/2023-10-28T20_47_49_2023-11-28T20_47_49'
+    mkdir(test_dir)
+    with open(f'{test_dir}/{test_fname1}', 'w') as f:
+        f.write('test content')
+    with open(f'{test_dir}/{test_fname2}', 'w') as f:
+        f.write('test content')
+    test_storage_name = storage_name.PossumName(test_fname1)
+    test_metadata_reader.storage_names.values.return_value = [test_storage_name]
+    test_metadata_reader.headers.get.return_value = None
+    test_kwargs = {
+        'prev_exec_dt': make_datetime('2023-10-28T20:47:49.000000000Z'),
+        'exec_dt': make_datetime('2023-11-28T20:47:49.000000000Z'),
+        'metadata_reader': test_metadata_reader,
+        'observable': test_observable,
+        'reporter': test_reporter,    
+        'clients': test_clients,    
+    }
+
+    test_subject = possum_execute.ExecutionUnit(test_config, **test_kwargs)
+    test_result = test_subject.do()
+    assert test_result == 0, 'expect success'
+    assert test_metadata_reader.set_headers.called, 'set_headers called'
+    assert test_metadata_reader.set_headers.call_count == 1, 'no PSM'
+

@@ -579,7 +579,7 @@ class ExecutionUnit:
         RADEC = f"{ra_hh_mm}{dec_dd_mm}"
         return RADEC
 
-    def _find_new_file_name(self, hdr, mfs):
+    def _find_new_file_name(self, hdr, mfs, file_name):
     # def name(fitsimage, prefix, version="v1", mfs=False):
         """
         Algorithm from @Sebokolodi, @Cameron-Van-Eck, @ErikOsinga (github).
@@ -660,11 +660,27 @@ class ExecutionUnit:
 
         crpix1 = hdr.get('CRPIX1')
         crpix2 = hdr.get('CRPIX2')
-        crval1, crval2 = hpx_ref_wcs.wcs_pix2world(-crpix1, -crpix2 , 0)
+
+        # do the reverse of https://github.com/AusSRC/pipeline_components/blob/ce31d2f6dafa68fd9ef499dec3f893d96dc82034/hpx_tiles/generate_tile_pixel_map.py#L218
+        x = -crpix1 + 2048
+        y = -crpix2 + 2048
+        # this way we don't have to remove 1 from the tileID, as is done in
+        # https://github.com/Sebokolodi/SkyTiles/blob/8528815eff573d8157b328e2ce52e8046f7c8b7f/rename_tiles.py#L179
+        # but it's correct right away.
+
+        crval1, crval2 = hpx_ref_wcs.wcs_pix2world(x, y , 0)
+
         tileID = hp.lonlat_to_healpix(crval1 * units.deg, crval2 * units.deg, return_offsets=False)
+
         outname = ''
+
+        # good to double-check. Aussrc files should have the tileID in their filename as well.
+        # assert str(tileID) in file_name, f"{tileID} should be in {file_name}. Please double-check if tileID was assigned correctly..."
+        if str(tileID) not in file_name:
+            self._logger.error(f"{tileID} should be in {file_name}. Please double-check if tileID was assigned correctly...")
+            return outname
+
         if tileID > 0:
-            tileID = tileID - 1 #shifts by 1.
 
             # extract the RA and DEC for a specific pixel
             center = hp.healpix_to_lonlat(tileID) * units.deg
@@ -687,6 +703,7 @@ class ExecutionUnit:
                 )
         else:
             self._logger.error(f'tileID is {tileID}. Error in metadata.')
+
         return outname
 
     def _reference_header(self, naxis, cdelt):
@@ -750,7 +767,7 @@ class ExecutionUnit:
                 # TODO - not quite sure which header index to return :)
                 headers = self._remote_metadata_reader.headers.get(found_storage_name.file_uri)
                 if headers:
-                    renamed_file = self._find_new_file_name(headers[0], ('mfs' in found_storage_name.file_name))
+                    renamed_file = self._find_new_file_name(headers[0], ('mfs' in found_storage_name.file_name), file_name)
                     if renamed_file:
                         found_storage_name.set_staging_name(renamed_file)
                         renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)

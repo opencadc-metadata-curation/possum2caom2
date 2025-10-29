@@ -11,7 +11,7 @@ ADD https://rclone.org/install.sh /usr/src/app
 RUN chmod 755 /usr/src/app/install.sh && /bin/bash -c "/usr/src/app/install.sh"
 
 ARG OPENCADC_BRANCH=main
-ARG OPENCADC_REPO=opencadc
+ARG OPENCADC_REPO=opencadc-metadata-curation
 
 RUN git clone https://github.com/${OPENCADC_REPO}/caom2tools.git && \
     cd caom2tools && \

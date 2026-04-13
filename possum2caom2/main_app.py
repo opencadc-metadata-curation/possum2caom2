@@ -84,7 +84,8 @@ import traceback
 from datetime import datetime, timedelta
 from urllib import parse as parse
 
-from astropy_healpix import HEALPix
+import healpy as healpy_lib
+import numpy as np
 from astropy.io import fits
 
 from caom2 import CalibrationLevel, DataProductType, MultiPolygon, ProductType, ReleaseType, Point
@@ -602,23 +603,23 @@ class Catalog1DMapping(Possum1DMapping):
     def _update_plane(self, plane):
         self._logger.debug(f'Begin _update_plane for {plane.product_id}')
         super()._update_plane(plane)
-        hp = HEALPix(nside=32, order='ring', frame='icrs')
+        nside = 32
         vertices = []
         points = []
         vertex_start = None
         # TODO - the healpix index is shifted by 1 in the rename, does it need to be unshifted
         # by 1 here?
-        x = hp.boundaries_skycoord(healpix_index=self._storage_name.healpix_index, step=1)
-        for x1 in x:
-            for x2 in x1:
-                point = Point(x2.ra.value, x2.dec.value)
-                points.append(point)
-                if vertex_start:
-                    vertex = Vertex(x2.ra.value, x2.dec.value, SegmentType.LINE)
-                else:
-                    vertex = Vertex(x2.ra.value, x2.dec.value, SegmentType.MOVE)
-                    vertex_start = vertex
-                vertices.append(vertex)
+        boundary_xyz = healpy_lib.boundaries(nside, int(self._storage_name.healpix_index), step=1)
+        ra_arr, dec_arr = healpy_lib.vec2ang(np.transpose(boundary_xyz), lonlat=True)
+        for ra_val, dec_val in zip(ra_arr, dec_arr):
+            point = Point(ra_val, dec_val)
+            points.append(point)
+            if vertex_start:
+                vertex = Vertex(ra_val, dec_val, SegmentType.LINE)
+            else:
+                vertex = Vertex(ra_val, dec_val, SegmentType.MOVE)
+                vertex_start = vertex
+            vertices.append(vertex)
         vertex_end = Vertex(vertex_start.cval1, vertex_start.cval2, SegmentType.CLOSE)
         vertices.append(vertex_end)
         samples = MultiPolygon(vertices=vertices)

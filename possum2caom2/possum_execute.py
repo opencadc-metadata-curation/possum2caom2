@@ -78,7 +78,7 @@ from astropy import units
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy_healpix import HEALPix
+import healpy as healpy_lib
 from copy import deepcopy
 from datetime import datetime
 
@@ -649,8 +649,7 @@ class ExecutionUnit:
             stokesid = 'v'
 
         self._logger.info('Define healpix grid for nside 32')
-        # define the healpix grid
-        hp = HEALPix(nside=32, order='ring', frame='icrs')
+        nside = 32
 
         # read the image crpix1 and crpix2 to determine the tile ID, and coordinates in degrees.
         naxis = hdr.get('NAXIS1')
@@ -670,7 +669,7 @@ class ExecutionUnit:
 
         crval1, crval2 = hpx_ref_wcs.wcs_pix2world(x, y , 0)
 
-        tileID = hp.lonlat_to_healpix(crval1 * units.deg, crval2 * units.deg, return_offsets=False)
+        tileID = healpy_lib.ang2pix(nside, crval1, crval2, lonlat=True)
 
         outname = ''
 
@@ -683,8 +682,7 @@ class ExecutionUnit:
         if tileID > 0:
 
             # extract the RA and DEC for a specific pixel
-            center = hp.healpix_to_lonlat(tileID) * units.deg
-            RA, DEC = center.value
+            RA, DEC = healpy_lib.pix2ang(nside, tileID, lonlat=True)
 
             self._logger.info(f'Derived RA is {RA} degrees and DEC is {DEC} degrees')
             c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')

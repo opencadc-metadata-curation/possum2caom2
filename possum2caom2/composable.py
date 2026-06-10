@@ -79,7 +79,7 @@ import sys
 import traceback
 
 from caom2pipe.data_source_composable import ListDirTimeBoxDataSource
-from caom2pipe.manage_composable import Config
+from caom2pipe.manage_composable import Config, StorageName
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.run_composable import run_by_state, run_by_todo
 from caom2pipe.transfer_composable import VoScienceTransfer
@@ -101,6 +101,12 @@ def _run():
     """
     config = Config()
     config.get_executors()
+    # Push collection / scheme onto the StorageName base class so PossumName builds
+    # destination URIs as 'cadc:POSSUM/<file>' rather than 'cadc:[]/<file>'.
+    # remote_execution() does the same; without it minoc rejects every PUT with 500.
+    StorageName.collection = config.collection
+    StorageName.preview_scheme = config.preview_scheme
+    StorageName.scheme = config.scheme
     source_transfer = None
     vo_client = Client(vospace_certfile=config.proxy_fqn)
     clients = RCloneClients(config)
@@ -134,6 +140,9 @@ def _run_incremental():
     """Uses a state file with a timestamp to identify the work to be done."""
     config = Config()
     config.get_executors()
+    StorageName.collection = config.collection
+    StorageName.preview_scheme = config.preview_scheme
+    StorageName.scheme = config.scheme
     data_source = ListDirTimeBoxDataSource(config)
     name_builder = EntryBuilder(storage_name.PossumName)
     clients = RCloneClients(config)

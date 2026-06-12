@@ -13,12 +13,6 @@ RUN chmod 755 /usr/src/app/install.sh && /bin/bash -c "/usr/src/app/install.sh"
 ARG OPENCADC_BRANCH=main
 ARG OPENCADC_REPO=opencadc-metadata-curation
 
-RUN git clone https://github.com/${OPENCADC_REPO}/caom2tools.git && \
-    cd caom2tools && \
-    git checkout ${OPENCADC_BRANCH} && \
-    pip install ./caom2utils && \
-    cd ..
-
 RUN pip install git+https://github.com/${OPENCADC_REPO}/caom2pipe@${OPENCADC_BRANCH}#egg=caom2pipe
 
 RUN pip install git+https://github.com/${OPENCADC_REPO}/possum2caom2@${OPENCADC_BRANCH}#egg=possum2caom2

@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2022.                            (c) 2022.
+#  (c) 2026.                            (c) 2026.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -73,6 +73,7 @@ import pytest
 
 
 COLLECTION = 'POSSUM'
+NAMESPACE = 'POSSUM'
 # Séverin Gaudet - 08-11-23 - files only archived at CADC, scheme is 'cadc'
 SCHEME = 'cadc'
 PREVIEW_SCHEME = 'cadc'
@@ -82,6 +83,7 @@ PREVIEW_SCHEME = 'cadc'
 def test_config():
     config = Config()
     config.collection = COLLECTION
+    config.namespace = NAMESPACE
     config.preview_scheme = PREVIEW_SCHEME
     config.scheme = SCHEME
     config.logging_level = 'INFO'
@@ -97,6 +99,7 @@ def test_config():
         'rclone_include_pattern': '*[iqu].fits',
     }
     StorageName.collection = config.collection
+    StorageName.namespace = config.namespace
     StorageName.preview_scheme = config.preview_scheme
     StorageName.scheme = config.scheme
     return config

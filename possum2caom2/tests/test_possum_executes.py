@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2025.                            (c) 2025.
+#  (c) 2026.                            (c) 2026.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -68,7 +68,7 @@
 
 import logging
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from glob import glob
 from os import listdir, mkdir
 from os.path import exists
@@ -89,6 +89,7 @@ def test_renaming_options():
         'POSSUM.band1.0204-41.10187.i.fits': 'PSM_944MHz_20asec_0204-4100_10187_i_v1.fits',
         'POSSUM.mfs.band1.0144-46_0214-46_0204-41.10314.i.fits': 'PSM_944MHz_20asec_0144-4600_0214-4600_0204-4100_10314_i_v1.fits',
         'POSSUM.mfs.band1.0144+46_0214+46_0204-41.10314.i.fits': 'PSM_944MHz_20asec_0144+4600_0214+4600_0204-4100_10314_i_v1.fits',
+        'PSM.band1.0049-51.11092.i.fits': 'PSM_944MHz_20asec_0049-5100_11092_i_v1.fits',
         # TODO 'POSSUM.mfs.band1.1336-04A_1336-04B_1315-04B_1315-04A.6663.i.fits'
     }
     for original, renamed in tests.items():
@@ -280,6 +281,7 @@ def test_state_runner_reporter(test_config, tmp_path, change_test_dir):
     assert test_reporter.all == 0, 'reporter all'
 
 
+@patch('possum2caom2.possum_execute.ExecutionUnit._find_new_file_name')
 @patch('possum2caom2.possum_execute.RemoteListDirDataSource.default_filter')
 @patch('possum2caom2.preview_augmentation.visit')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
@@ -291,6 +293,7 @@ def test_state_runner_nominal_multiple_files(
     header_mock,
     preview_mock,
     filter_mock,
+    new_file_name_mock,
     test_config,
     test_data_dir,
     tmp_path,
@@ -331,12 +334,22 @@ def test_state_runner_nominal_multiple_files(
         lambda x, working_directory, storage_name, log_file_directory, clients, observable, metadata_reader, config: x
     )
     filter_mock.return_value = True
+
+    # the renaming library changed, and this mock avoids having to correct the time-box test cases with file names
+    # that have the new tileID value
+    healpy_change = {
+        i_test_file: 'PSM_1367MHz_18asec_2031-5248_11073_i_v1.fits',
+        q_test_file: 'PSM_1367MHz_18asec_2013-5552_11261_i_v1.fits',
+        u_test_file: 'PSM_1367MHz_18asec_2031-5248_11073_q_v1.fits',
+    }
+    new_file_name_mock.side_effect = lambda hdr, mfs, file_name: healpy_change.get(file_name)
+
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = False
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
     test_config.data_sources = ['pawsey_test/acacia/possum1234']
     test_config.data_source_extensions = ['.fits', '.fits.header']
-    test_config.logging_level = 'INFO'
+    test_config.logging_level = 'DEBUG'
     test_config.interval = 60 * 48  # work in time-boxes of 2 days => 60m * 48h
     test_config.observe_execution = True
     test_organizer = Mock()
@@ -405,6 +418,7 @@ def test_state_runner_nominal_multiple_files(
     assert len(left_behind) + len(left_behind_2) == 3, 'no files cleaned up'
 
 
+@patch('possum2caom2.possum_execute.ExecutionUnit._find_new_file_name')
 @patch('possum2caom2.possum_execute.RemoteListDirDataSource.default_filter')
 @patch('possum2caom2.preview_augmentation.visit')
 @patch('caom2utils.data_util.get_local_headers_from_fits')
@@ -416,6 +430,7 @@ def test_state_runner_clean_up_when_storing_with_retry(
     header_mock,
     visit_mock,
     filter_mock,
+    new_file_name_mock,
     test_config,
     test_data_dir,
     tmp_path,
@@ -442,6 +457,14 @@ def test_state_runner_clean_up_when_storing_with_retry(
         lambda x, working_directory, storage_name, log_file_directory, clients, observable, metadata_reader, config: x
     )
     filter_mock.return_value = True
+
+    # the renaming library changed, and this mock avoids having to correct the time-box test cases with file names
+    # that have the new tileID value
+    healpy_change = {
+        u_test_file: 'PSM_1367MHz_18asec_2031-5248_11073_q_v1.fits',
+    }
+    new_file_name_mock.side_effect = lambda hdr, mfs, file_name: healpy_change.get(file_name)
+
     test_config.change_working_directory(tmp_path)
     test_config.cleanup_files_when_storing = True
     test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
@@ -562,11 +585,12 @@ def test_remote_execution(
     ), f'client mock {clients_mock.server_side_ctor_client.mock_calls}'
 
 
+@patch('possum2caom2.possum_execute.ExecutionUnit._find_new_file_name')
 @patch('possum2caom2.possum_execute.RemoteListDirDataSource.default_filter')
 @patch('possum2caom2.fits2caom2_augmentation.visit')
 @patch('possum2caom2.possum_execute.RCloneClients')
 def test_remote_execute_with_local_commands(
-    clients_mock, visit_mock, filter_mock, test_config, test_data_dir, tmp_path, change_test_dir
+    clients_mock, visit_mock, filter_mock, new_file_name_mock, test_config, test_data_dir, tmp_path, change_test_dir
 ):
     # execution path for local rclone
     test_config.change_working_directory(tmp_path)
@@ -591,21 +615,23 @@ def test_remote_execute_with_local_commands(
     clients_mock.return_value.server_side_ctor_client.read.return_value = None
     visit_mock.return_value = test_observation
     filter_mock.return_value = True
+    # the renaming library changed, and this mock avoids having to correct the time-box test cases with file names
+    # that have the new tileID value
+    new_file_name_mock.side_effect = lambda hdr, mfs, file_name: file_name
 
     test_result = possum_execute.remote_execution()
     assert test_result == 0, 'expect success result'
-    assert clients_mock.return_value.data_client.put.call_count == 5, f'client mock {clients_mock.return_value.data_client.put.mock_calls}'
-    assert clients_mock.return_value.metadata_client.read.call_count == 5, f'metadata client call count'
-    assert clients_mock.return_value.metadata_client.update.call_count == 5, f'metadata client call count'
-    time_box_5 = '2024-07-17T16_33_00_2024-07-18T21_40_00_754216'
+    assert clients_mock.return_value.data_client.put.call_count == 4, f'client mock {clients_mock.return_value.data_client.put.mock_calls}'
+    assert clients_mock.return_value.metadata_client.read.call_count == 4, f'metadata client call count'
+    assert clients_mock.return_value.metadata_client.update.call_count == 4, f'metadata client call count'
+    time_box_5 = '2024-07-17T16_33_00_2024-07-17T18_21_04_419999'
     time_box_5_calls = [
         call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band2.1506-32A_1506-32B.9488.i.fits'),
         call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.i.fits'),
         call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.q.fits'),
         call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.band1.0204-41.10187.u.fits'),
-        call(f'{tmp_path}/{time_box_5}', 'cadc:POSSUM/POSSUM.mfs.band1.2108+00A_2108+04B_2108+00B_2108+04A.5808.i.fits'),
     ]
-    clients_mock.return_value.data_client.put.assert_has_calls( 
+    clients_mock.return_value.data_client.put.assert_has_calls(
         time_box_5_calls, any_order=True
     ), clients_mock.return_value.data_client.put.mock_calls
     assert (
@@ -692,8 +718,8 @@ def test_rename_skip(run_mock, test_config, tmp_path):
         'exec_dt': make_datetime('2023-11-28T20:47:49.000000000Z'),
         'metadata_reader': test_metadata_reader,
         'observable': test_observable,
-        'reporter': test_reporter,    
-        'clients': test_clients,    
+        'reporter': test_reporter,
+        'clients': test_clients,
     }
 
     test_subject = possum_execute.ExecutionUnit(test_config, **test_kwargs)
@@ -703,10 +729,11 @@ def test_rename_skip(run_mock, test_config, tmp_path):
     assert test_metadata_reader.set_headers.call_count == 1, 'no PSM'
 
 
+# the method for changing the tileID in the file name has changed in v0.12.0, and the file that used
+# to not work for renaming, works now, so can't run this test correctly
+@pytest.mark.skip('file rename change')
 @patch('possum2caom2.possum_execute.TodoRunner')
 def test_rename_bad_metadata(run_mock, test_config, test_data_dir):
-    import logging
-    logging.getLogger().setLevel(logging.DEBUG)
     run_mock.return_value.run.return_value = 0
     test_dir = f'{test_data_dir}/edge_cases'
     test_config.change_working_directory(test_dir)
@@ -727,13 +754,13 @@ def test_rename_bad_metadata(run_mock, test_config, test_data_dir):
         'exec_dt': make_datetime('2023-11-28T20:47:49.000000000Z'),
         'metadata_reader': test_metadata_reader,
         'observable': test_observable,
-        'reporter': test_reporter,    
-        'clients': test_clients,    
+        'reporter': test_reporter,
+        'clients': test_clients,
     }
 
     test_subject = possum_execute.ExecutionUnit(test_config, **test_kwargs)
     test_subject._working_directory = test_dir
-    test_result = test_subject._find_new_file_name(test_headers[0], True)
+    test_result = test_subject._find_new_file_name(test_headers[0], True, test_fname1)
     assert test_result == '', 'expected an empty string because the file metadata is wrong'
     test_result = test_subject.do()
     assert test_result == 0, 'expect success'

@@ -94,6 +94,8 @@ proxy certificate as follows. You will be prompted for the password for your CAD
    root@53bef30d8af3:/usr/src/app# pytest
    ```
 
+   The rclone configuration for the unit tests is a local remote (type 33) named pawsey_test.
+
 1. For some instructions that might be helpful on using containers, see:
 https://github.com/opencadc-metadata-curation/collection2caom2/wiki/Docker-and-Collections
 

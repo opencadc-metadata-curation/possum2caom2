@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2025.                            (c) 2025.
+#  (c) 2026.                            (c) 2026.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -95,7 +95,7 @@ from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe.astro_composable import get_datetime_mjd
 from caom2pipe import caom_composable as cc
 from caom2pipe.client_composable import repo_create, repo_delete, repo_get
-from caom2pipe.manage_composable import CadcException, get_keyword, TaskType, ValueRepairCache, write_obs_to_file
+from caom2pipe.manage_composable import CadcException, get_keyword, TaskType, ValueRepairCache
 
 
 __all__ = ['mapping_factory']
@@ -155,7 +155,7 @@ class Possum1DMapping(cc.TelescopeMapping):
             super().update(file_info)
             Possum1DMapping.value_repair.repair(self._observation)
 
-            # the super call, via _update_artifact, removes empty Parts before sending the Observation for server-side computing here
+            # the super call removes empty Parts before sending the Observation for server-side computing here
             for plane in self._observation.planes.values():
                 if plane.product_id == self._storage_name.product_id:
                     self._post_plane_update(plane)
@@ -211,9 +211,9 @@ class Possum1DMapping(cc.TelescopeMapping):
             # level read the computed metadata from that CAOM service and copy the Plane-level bits
             try:
                 repo_delete(
-                    self._clients.server_side_ctor_client, 
-                    self._observation.collection, 
-                    self._observation.observation_id, 
+                    self._clients.server_side_ctor_client,
+                    self._observation.collection,
+                    self._observation.observation_id,
                     self._observable.metrics
                 )
             except CadcException as e:

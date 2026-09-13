@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2020.                            (c) 2020.
+#  (c) 2026.                            (c) 2026.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -71,12 +71,14 @@ import os
 from datetime import datetime
 from mock import patch, PropertyMock
 
+from caom2pipe.astro_composable import make_headers_from_file
 from caom2pipe.data_source_composable import StateRunnerMeta
 from caom2pipe.manage_composable import Config, State, StorageName, TaskType
 from possum2caom2.storage_name import PossumName
 from possum2caom2 import composable
 
 
+@patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch(
     'caom2pipe.data_source_composable.ListDirTimeBoxDataSource.' 'get_time_box_work',
     autospec=True,
@@ -87,7 +89,10 @@ from possum2caom2 import composable
 )
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
 @patch('possum2caom2.possum_execute.RCloneClients')
-def test_run_by_state(clients_mock, do_one_mock, end_time_mock, get_work_mock, test_config, tmp_path, change_test_dir):
+def test_run_by_state(
+    clients_mock, do_one_mock, end_time_mock, get_work_mock, access_mock, test_config, tmp_path, change_test_dir
+):
+    access_mock.return_value = 'https://localhost'
     test_config.interval = 3600
     test_config.logging_level = 'DEBUG'
     test_config.change_working_directory(tmp_path.as_posix())
@@ -156,3 +161,59 @@ def test_run(run_mock, access_mock, test_config, tmp_path):
         assert test_storage.source_names[0] == test_f_name, 'wrong fname on disk'
     finally:
         os.chdir(orig_cwd)
+
+
+@patch('possum2caom2.possum_execute.get_local_headers_from_fits')
+@patch('possum2caom2.possum_execute.RCloneTransfer.get')
+@patch('cadcutils.net.ws.WsCapabilities.get_access_url')
+@patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
+def test_run_remote_todo(run_mock, access_mock, get_mock, headers_mock, test_config, tmp_path, change_test_dir):
+    run_mock.return_value = (0, None)
+    access_mock.return_value = 'https://localhost'
+    test_pawsey_path = 'components/0049-51/survey/i/PSM.0049-51.11400.q.fits'
+    test_f_id = 'PSM_943MHz_20asec_1026-5855_11400_q_v1'
+    test_f_name = f'{test_f_id}.fits'
+    test_config.change_working_directory(tmp_path.as_posix())
+    test_config.proxy_file_name = 'test_proxy.fqn'
+    test_config.task_types = [TaskType.STORE, TaskType.INGEST, TaskType.MODIFY]
+    test_config.data_sources = ['pawsey_test/acacia/possum1234']
+    test_config.data_source_extensions = ['.fits', '.fits.header']
+    test_config.logging_level = 'DEBUG'
+    test_config.write_to_file(test_config)
+
+    with open(test_config.proxy_fqn, 'w') as f:
+        f.write('test content')
+    with open(test_config.work_fqn, 'w') as f:
+        f.write(test_pawsey_path)
+
+    get_mock.side_effect = _copy_pawsey_file
+    headers_mock.side_effect = _pawsey_headers_mock
+
+    try:
+        # execution
+        test_result = composable._run_remote_todo()
+    except Exception as e:
+        assert False, e
+
+    assert test_result == 0, 'wrong return value'
+    assert run_mock.called, 'should have been called'
+    args, _ = run_mock.call_args
+    test_storage = args[0]
+    assert isinstance(test_storage, StorageName), type(test_storage)
+    assert test_storage.file_name == test_f_name, 'wrong file name'
+    assert os.path.basename(test_storage.source_names[0]) == test_f_name, \
+        f'wrong fname on disk got {test_storage.source_names[0]} expected {test_f_name}'
+    assert False
+
+
+def _copy_pawsey_file(ignore_source, destination_fqn):
+    with open(destination_fqn, 'w') as f:
+        f.write('test content')
+
+
+def _pawsey_headers_mock(_):
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    return make_headers_from_file(
+        os.path.join(os.path.join(this_dir, 'data/possum'), 'PSM_943MHz_20asec_1026-5855_11400_q_v1.fits.header'),
+    )
+

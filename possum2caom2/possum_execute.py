@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2024.                            (c) 2024.
+#  (c) 2026.                            (c) 2026.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -84,17 +84,18 @@ from datetime import datetime
 
 from cadcdata.storageinv import FileInfo
 from caom2pipe.astro_composable import check_fitsverify
-from caom2pipe.client_composable import ClientCollection, repo_create, repo_get, repo_update
+from caom2pipe.client_composable import ClientCollection
 from caom2pipe.data_source_composable import IncrementalDataSource, ListDirSeparateDataSource
 from caom2pipe.execute_composable import OrganizeExecutes
 from caom2pipe.manage_composable import CadcException, Config, compute_md5sum, create_dir, exec_cmd, exec_cmd_info
-from caom2pipe.manage_composable import ExecutionReporter, increment_time, make_datetime, Observable, StorageName, TaskType
+from caom2pipe.manage_composable import ExecutionReporter, increment_time, make_datetime, Observable
+from caom2pipe.manage_composable import StorageName, TaskType
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.reader_composable import FileMetadataReader
 from caom2pipe.run_composable import set_logging, StateRunner, TodoRunner
-from caom2pipe.transfer_composable import CadcTransfer, Transfer
+from caom2pipe.transfer_composable import CadcTransfer, ScienceTransfer, Transfer
 from caom2repo import CAOM2RepoClient
-from caom2utils.data_util import get_file_type
+from caom2utils.data_util import get_file_type, get_local_headers_from_fits
 from possum2caom2 import fits2caom2_augmentation, preview_augmentation, spectral_augmentation
 from possum2caom2.storage_name import PossumName
 
@@ -124,6 +125,262 @@ class RCloneClients(ClientCollection):
     @property
     def server_side_ctor_client(self):
         return self._server_side_ctor_client
+
+
+class RCloneEntryBuilder(EntryBuilder):
+    """StorageName instance construction that includes renaming the files."""
+
+    def __init__(self, storage_name_ctor, config, metadata_reader, source_transfer):
+        super().__init__(storage_name_ctor)
+        self._config = config
+        self._local_metadata_reader = metadata_reader
+        self._source_transfer = source_transfer
+
+    def build(self, entry):
+        self._logger.error(f'Begin build with entry {entry}')
+        pawsey_file_name = os.path.basename(entry)
+        rclone_destination_fqn = os.path.join(self._config.working_directory, pawsey_file_name)
+        self._source_transfer.get('entry', rclone_destination_fqn)
+        storage_name = self._rename(rclone_destination_fqn, pawsey_file_name)
+        self._logger.error(f'End build with storage_name {storage_name}')
+        return storage_name
+
+    def _rename(self, original_fqn, pawsey_file_name):
+        """The files from Pawsey need to be renamed. Some of the metadata to rename the files is most easily found
+        in the plane-level metadata that is calculated server-side.
+
+        The sandbox POSSUM configuration calculates the plane-level metadata, but the production POSSUM configuration
+        does not.
+
+        The BINTABLE files require do not contain enough metadata to easily calculate plane-level metadata, so for
+        those files, that must be calculated by this application. The position bounding box will be the HEALpix
+        coordinates for n=32.
+        """
+        self._logger.debug('Begin _rename')
+        headers = get_local_headers_from_fits(original_fqn)
+        if headers:
+            renamed_file = self._find_new_file_name(headers[0], ('mfs' in pawsey_file_name), pawsey_file_name)
+            if renamed_file:
+                renamed_fqn = original_fqn.replace(os.path.basename(original_fqn), renamed_file)
+                os.rename(original_fqn, renamed_fqn)
+                storage_name = self._storage_name(renamed_fqn)
+                self._local_metadata_reader.set(storage_name)
+                self._logger.info(f'Renamed {original_fqn} to {renamed_fqn}.')
+            else:
+                raise CadcException(f'Cannot rename {original_fqn}.')
+        self._logger.debug('End _rename')
+        return storage_name
+
+    def _find_new_file_name(self, hdr, mfs, file_name):
+    # def name(fitsimage, prefix, version="v1", mfs=False):
+        """
+        Algorithm from @Sebokolodi, @Cameron-Van-Eck, @ErikOsinga (github).
+        Setting up the name to be used for tiles. The script reads the bmaj and stokes from the fits header. The
+        rest of the parameters are flexible to change.
+
+        fitsimage: tile image
+        prefix   : prefix to use. E.g. PSM for full survey,
+                PSM_pilot1 for POSSUM pilot 1
+                PSM_pilot2 for POSSUM pilot 2
+        tileID   : tile pixel (Healpix pixel)
+
+        version  : version of the output product. Version 1 is v1, version is v2,
+                and so forth.
+
+        """
+
+        self._logger.debug('Begin _find_new_file_name')
+
+        # get bmaj.
+        bmaj = round(hdr.get('BMAJ') * 3600.0)
+        if bmaj:
+            bmaj =  f'{bmaj:2d}asec'
+
+        # extract stokes parameter. It can be in either the 3rd or fourth axis.
+
+        if hdr.get('CTYPE3') == 'STOKES':
+            stokes = hdr.get('CRVAL3')
+            # if Stokes is axis 3, then frequency is axis 4.
+            freq0 = hdr.get('CRVAL4')
+            dfreq = hdr.get('CDELT4')
+            n = hdr.get('NAXIS4')
+            if n and n > 1:
+                cenfreq = round((freq0 + (freq0 + (n - 1) * dfreq))/(2.0 * 1e6))
+            else:
+                cenfreq = round(freq0/1e6)
+
+
+        elif hdr.get('CTYPE4') == 'STOKES':
+            stokes = hdr.get('CRVAL4')
+            # if Stokes is axis 4, then frequency is axis 3. If we have >4 axis, the script will fail.
+            freq0 = hdr.get('CRVAL3')
+            dfreq = hdr.get('CDELT3')
+            n = hdr.get('NAXIS3')
+            if n and n > 1:
+                cenfreq = round((freq0 + (freq0 + (n - 1) * dfreq))/(2.0 * 1e6))
+            else:
+                cenfreq = round(freq0/1e6)
+
+        else:
+            self._logger.error('Cannot find Stokes axis on the 3rd/4th axis')
+            return None
+
+        cenfreq = f'{round(cenfreq)}MHz'
+
+        # stokes I=1, Q=2, U=3 and 4=V
+        if int(stokes) == 1:
+            stokesid = 'i'
+
+        elif int(stokes) == 2:
+            stokesid = 'q'
+
+        elif int(stokes) == 3:
+            stokesid = 'u'
+
+        elif int(stokes) == 4:
+            stokesid = 'v'
+
+        self._logger.info('Define healpix grid for nside 32')
+        nside = 32
+
+        # read the image crpix1 and crpix2 to determine the tile ID, and coordinates in degrees.
+        naxis = hdr.get('NAXIS1')
+        cdelt = abs(hdr.get('CDELT1'))
+        hpx_ref_hdr = self._reference_header(naxis=naxis, cdelt=cdelt)
+        hpx_ref_wcs = WCS(hpx_ref_hdr)
+
+        crpix1 = hdr.get('CRPIX1')
+        crpix2 = hdr.get('CRPIX2')
+
+        # do the reverse of https://github.com/AusSRC/pipeline_components/blob/ce31d2f6dafa68fd9ef499dec3f893d96dc82034/hpx_tiles/generate_tile_pixel_map.py#L218
+        x = -crpix1 + 2048
+        y = -crpix2 + 2048
+        # this way we don't have to remove 1 from the tileID, as is done in
+        # https://github.com/Sebokolodi/SkyTiles/blob/8528815eff573d8157b328e2ce52e8046f7c8b7f/rename_tiles.py#L179
+        # but it's correct right away.
+
+        crval1, crval2 = hpx_ref_wcs.wcs_pix2world(x, y , 0)
+
+        tileID = healpy_lib.ang2pix(nside, crval1, crval2, lonlat=True)
+
+        outname = ''
+
+        # good to double-check. Aussrc files should have the tileID in their filename as well.
+        # assert str(tileID) in file_name, f"{tileID} should be in {file_name}. Please double-check if tileID was assigned correctly..."
+        if str(tileID) not in file_name:
+            self._logger.error(f"{tileID} should be in {file_name}. Please double-check if tileID was assigned correctly...")
+            return outname
+
+        if tileID > 0:
+
+            # extract the RA and DEC for a specific pixel
+            RA, DEC = healpy_lib.pix2ang(nside, tileID, lonlat=True)
+
+            self._logger.info(f'Derived RA is {RA} degrees and DEC is {DEC} degrees')
+            c = SkyCoord(ra=RA * units.degree, dec=DEC * units.degree, frame='icrs')
+            # coordinate string as "hhmm-ddmm"
+            hmdm = self._RADEC_hms_dms_to_string(c)
+
+            if mfs:
+                outname = (
+                    f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_t0_{stokesid}_'
+                    f'{self._config.lookup.get('rename_version')}.fits'
+                )
+            else:
+                outname = (
+                    f'{self._config.lookup.get('rename_prefix')}_{cenfreq}_{bmaj}_{hmdm}_{tileID}_{stokesid}_'
+                    f'{self._config.lookup.get('rename_version')}.fits'
+                )
+        else:
+            self._logger.error(f'tileID is {tileID}. Error in metadata.')
+
+        return outname
+
+    def _RADEC_hms_dms_to_string(self, c: SkyCoord):
+        """
+        Round SkyCoordinate "c" (RA,DEC) to a string of "{hhmm}{ddmm}" for "{ra}{dec}"
+        with proper rounding
+        """
+        ### round RA ###
+        ra_h, ra_m, ra_s = c.ra.hms
+        # round minutes based on seconds
+        ra_m = round(ra_m + (ra_s / 60.0))
+        # round hours based on minutes
+        if ra_m >= 60:
+            ra_m = 0
+            ra_h += 1
+        # check hours boundary
+        if ra_h >= 24:
+            ra_h = 0
+        # create RA hh mm string with zero padding
+        ra_hh_mm = f"{int(ra_h):02d}{int(ra_m):02d}"
+
+        ### round DEC ###
+        dsign = "+" # rounding absolute dec and fixing sign after
+        if c.dec < (0*units.degree):
+            dsign = "-"
+        dec_d, dec_m, dec_s = np.abs(c.dec.dms)
+        # round minutes based on seconds
+        dec_m = round(abs(dec_m) + abs(dec_s)/60.0)
+        # round degrees based on minutes
+        if dec_m >= 60:
+            dec_m = 0
+            dec_d += 1
+        # create DEC dd mm string with zero padding and the proper sign
+        dec_dd_mm = f"{dsign}{int(dec_d):02d}{int(dec_m):02d}"
+
+        # Create final string "hhmm-ddmm"
+        RADEC = f"{ra_hh_mm}{dec_dd_mm}"
+        return RADEC
+
+    def _reference_header(self, naxis, cdelt):
+        """
+        This is important as it allows us to properly determine correct pixel central pixel anywhere within the grid.
+
+        NB: We use this header to convert the crpix1/2 in the header to tile ID, then degrees.
+
+        :param cdelt the pixel size of the image in the grid. Must be the same as the one used for tiling.
+        :param naxis number of pixels within each axis.
+        """
+        d = {
+            'SIMPLE': 'T',
+            'BITPIX': -32,
+            'NAXIS': 2,
+            'NAXIS1': naxis,
+            'NAXIS2': naxis,
+            'EXTEND': 'F',
+            'CRPIX1': (naxis/2.0),
+            'CRPIX2': (naxis/2.0) + 0.5,
+            'PC1_1': 0.70710677,
+            'PC1_2': 0.70710677,
+            'PC2_1': -0.70710677,
+            'PC2_2': 0.70710677,
+            'CDELT1': -1 * cdelt,
+            'CDELT2': cdelt,
+            'CTYPE1': 'RA---HPX',
+            'CTYPE2': 'DEC--HPX',
+            'CRVAL1': 0.,
+            'CRVAL2': 0.,
+            'PV2_1': 4,
+            'PV2_2': 3,
+        }
+        return fits.Header(d)
+
+
+class RCloneTransfer(ScienceTransfer):
+
+    def __init__(self):
+        super().__init__()
+
+    def get(self, source, dest_fqn):
+        if not os.exists(dest_fqn):
+            exec_cmd(f'rclone copy {source} {dest_fqn}')
+
+    def failure_action(self, original_fqn, destination_fqn, msg):
+        self._logger.error(
+            f'Source file {original_fqn}, copied to {destination_fqn} failed fitsverify check. Leaving it in place.'
+        )
+        raise CadcException(msg)
 
 
 class RemoteMetadataReader(FileMetadataReader):
@@ -737,7 +994,6 @@ class ExecutionUnit:
         }
         return fits.Header(d)
 
-
     def _rename(self):
         """The files from Pawsey need to be renamed. Some of the metadata to rename the files is most easily found
         in the plane-level metadata that is calculated server-side.
@@ -800,6 +1056,47 @@ class ExecutionUnit:
             logging.getLogger().removeHandler(self._log_handler)
             self._log_handler.flush()
             self._log_handler.close()
+
+
+class ExecutionUnitTodo(ExecutionUnit):
+
+    def __init__(self, config):
+        """
+        :param root_directory str staging space location
+        :param label str name of the execution unit. Should be unique and conform to posix directory naming standards.
+        """
+        self._log_fqn = None
+        self._logging_level = None
+        self._log_handler = None
+        self._task_types = config.task_types
+        self._config = config
+        self._clients = None
+        # self._data_source = kwargs.get('data_source')
+        # self._remote_metadata_reader = kwargs.get('metadata_reader')
+        self._observable = None
+        self._reporter = None
+        self._working_directory = config.working_directory
+        if config.log_to_file:
+            if config.log_file_directory:
+                self._log_fqn = config.log_file_directory
+            else:
+                self._log_fqn = config.working_directory
+            self._logging_level = config.logging_level
+        self._num_entries = None
+        self._central_wavelengths = {}  # key is original ObservationID, value is central wavelength
+        self._observations = {}  # key is original ObservationID, values are Observation instances
+        self._local_metadata_reader = None
+        self._logger = logging.getLogger(self.__class__.__name__)
+
+    def init_execution_unit(self, clients, local_metadata_reader, observable, reporter):
+        """
+        :param root_directory str staging space location
+        :param label str name of the execution unit. Should be unique and conform to posix directory naming standards.
+        """
+        self._clients = clients
+        self._observable = observable
+        self._reporter = reporter
+        self._local_metadata_reader = local_metadata_reader
 
 
 class ExecutionUnitOrganizeExecutes(OrganizeExecutes):

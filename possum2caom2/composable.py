@@ -78,13 +78,14 @@ import logging
 import sys
 import traceback
 
-from caom2pipe.data_source_composable import ListDirTimeBoxDataSource
+from caom2pipe.data_source_composable import ListDirTimeBoxDataSource, TodoFileDataSource
 from caom2pipe.manage_composable import Config
 from caom2pipe.name_builder_composable import EntryBuilder
+from caom2pipe.reader_composable import FileMetadataReader
 from caom2pipe.run_composable import run_by_state, run_by_todo
 from caom2pipe.transfer_composable import VoScienceTransfer
 from possum2caom2 import fits2caom2_augmentation, preview_augmentation, storage_name
-from possum2caom2.possum_execute import RCloneClients, remote_execution
+from possum2caom2.possum_execute import RCloneClients, RCloneEntryBuilder, RCloneTransfer, remote_execution
 from vos import Client
 
 
@@ -168,6 +169,47 @@ def run_remote():
     """Wraps _run_remote in exception handling."""
     try:
         _run_remote()
+        sys.exit(0)
+    except Exception as e:
+        logging.error(e)
+        tb = traceback.format_exc()
+        logging.debug(tb)
+        sys.exit(-1)
+
+
+def _run_remote_todo():
+    """Uses a todo file to identify work to be done at Pawsey s3 system. The entries in the todo file must include
+    Pawsey path information."""
+    #   use a TodoRunner with a RemoteTodoDataSource that is responsible for the copy and rename.
+    logging.debug('Begin remote_execution')
+    config = Config()
+    config.get_executors()
+    clients = RCloneClients(config)
+    local_metadata_reader = FileMetadataReader()
+    source_transfer = RCloneTransfer()
+    name_builder = RCloneEntryBuilder(storage_name.PossumName, config, local_metadata_reader, source_transfer)
+    data_sources = []
+    for data_source in config.data_sources:
+        data_source = TodoFileDataSource(config)
+        data_sources.append(data_source)
+
+    result = run_by_todo(
+        config=config,
+        name_builder=name_builder,
+        sources=data_sources,
+        meta_visitors=META_VISITORS,
+        data_visitors=DATA_VISITORS,
+        store_transfer=source_transfer,
+        clients=clients,
+        metadata_reader=local_metadata_reader,
+    )
+    return result
+
+
+def run_remote_todo():
+    """Wraps _run_remote_todo in exception handling."""
+    try:
+        _run_remote_todo()
         sys.exit(0)
     except Exception as e:
         logging.error(e)

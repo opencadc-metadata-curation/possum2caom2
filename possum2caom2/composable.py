@@ -186,7 +186,7 @@ def _run_remote_todo():
     config.get_executors()
     clients = RCloneClients(config)
     local_metadata_reader = FileMetadataReader()
-    source_transfer = RCloneTransfer()
+    source_transfer = RCloneTransfer(config)
     name_builder = RCloneEntryBuilder(storage_name.PossumName, config, local_metadata_reader, source_transfer)
     data_sources = []
     for data_source in config.data_sources:

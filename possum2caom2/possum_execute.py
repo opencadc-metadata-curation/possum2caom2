@@ -85,7 +85,7 @@ from datetime import datetime
 from cadcdata.storageinv import FileInfo
 from caom2pipe.astro_composable import check_fitsverify
 from caom2pipe.client_composable import ClientCollection
-from caom2pipe.data_source_composable import IncrementalDataSource, ListDirSeparateDataSource
+from caom2pipe.data_source_composable import IncrementalDataSource, ListDirSeparateDataSource, TodoFileDataSource
 from caom2pipe.execute_composable import OrganizeExecutes
 from caom2pipe.manage_composable import CadcException, Config, compute_md5sum, create_dir, exec_cmd, exec_cmd_info
 from caom2pipe.manage_composable import ExecutionReporter, increment_time, make_datetime, Observable
@@ -326,22 +326,38 @@ class PawseyRename:
 
 
 class RCloneEntryBuilder(EntryBuilder, PawseyRename):
-    """StorageName instance construction that includes renaming the files."""
+    """StorageName instance construction that includes renaming the files according to rules captured in PawseyRename
+    class."""
 
     def __init__(self, storage_name_ctor, config, metadata_reader, source_transfer):
         super().__init__(storage_name_ctor)
         self._config = config
         self._local_metadata_reader = metadata_reader
         self._source_transfer = source_transfer
+        # the link between the original and the rename
+        # keys are pawsey names, values are POSSUM names
+        self._pawsey_names = {}
 
     def build(self, entry):
-        self._logger.error(f'Begin build with entry {entry}')
+        self._logger.debug(f'Begin build with entry {entry}')
         pawsey_file_name = os.path.basename(entry)
         rclone_destination_fqn = os.path.join(self._config.working_directory, pawsey_file_name)
-        self._source_transfer.get('entry', rclone_destination_fqn)
+        if not os.path.exists(rclone_destination_fqn) and not self._already_renamed(pawsey_file_name):
+            self._source_transfer.get(entry, rclone_destination_fqn)
         storage_name = self._rename(rclone_destination_fqn, pawsey_file_name)
-        self._logger.error(f'End build with storage_name {storage_name}')
+        self._pawsey_names[pawsey_file_name] = storage_name.file_name
+        self._logger.debug(f'End build with storage_name {storage_name}')
         return storage_name
+
+    def _already_renamed(self, pawsey_file_name):
+        entries = glob.glob('*.fits', root_dir=self._config.working_directory, recursive=False)
+        for renamed_file in self._pawsey_names.values():
+            if renamed_file in entries:
+                self._logger.info(
+                    f'Orginal file {pawsey_file_name} already on disk as {renamed_file}. Not retrieving.'
+                )
+                return True
+        return False
 
     def _rename(self, original_fqn, pawsey_file_name):
         """The files from Pawsey need to be renamed. Some of the metadata to rename the files is most easily found
@@ -372,12 +388,15 @@ class RCloneEntryBuilder(EntryBuilder, PawseyRename):
 
 class RCloneTransfer(ScienceTransfer):
 
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
+        if 'pawsey' in config.data_sources[0]:
+            self._remote_key = config.data_sources[0].replace('/', ':', 1)
+        else:
+            self._remote_key = config.data_sources[0]
 
     def get(self, source, dest_fqn):
-        if not os.exists(dest_fqn):
-            exec_cmd(f'rclone copy {source} {dest_fqn}')
+        exec_cmd(f'rclone copy {self._remote_key}/{source} {os.path.dirname(dest_fqn)}')
 
     def failure_action(self, original_fqn, destination_fqn, msg):
         self._logger.error(

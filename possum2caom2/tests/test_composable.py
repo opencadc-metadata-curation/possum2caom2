@@ -203,7 +203,10 @@ def test_run_remote_todo(run_mock, access_mock, get_mock, headers_mock, test_con
     assert test_storage.file_name == test_f_name, 'wrong file name'
     assert os.path.basename(test_storage.source_names[0]) == test_f_name, \
         f'wrong fname on disk got {test_storage.source_names[0]} expected {test_f_name}'
-    assert False
+    assert get_mock.call_count == 1, 'number of rclone copy calls'
+    get_mock.assert_called_with(
+        test_pawsey_path, f'{tmp_path.as_posix()}/{os.path.basename(test_pawsey_path)}'
+    ), 'wrong rclone call'
 
 
 def _copy_pawsey_file(ignore_source, destination_fqn):

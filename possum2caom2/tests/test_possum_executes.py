@@ -776,5 +776,5 @@ def test_rclone_transfer(exec_cmd_mock, test_config):
     test_destination = '/tmp/test_source.fits'
     test_subject.get(test_source, test_destination)
     exec_cmd_mock.assert_called_with(
-        'rclone copy pawsey_test:acacia/possum1234/component/tile/test_source.fits /tmp'
+        'rclone copy --config None pawsey_test:acacia/possum1234/component/tile/test_source.fits /tmp'
     ), 'wrong exec_cmd'

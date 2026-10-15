@@ -78,12 +78,14 @@ import logging
 import sys
 import traceback
 
+from shutil import move
+
 from caom2pipe.data_source_composable import ListDirTimeBoxDataSource, TodoFileDataSource
 from caom2pipe.manage_composable import Config
 from caom2pipe.name_builder_composable import EntryBuilder
 from caom2pipe.reader_composable import FileMetadataReader
 from caom2pipe.run_composable import run_by_state, run_by_todo
-from caom2pipe.transfer_composable import VoScienceTransfer
+from caom2pipe.transfer_composable import ScienceTransfer, VoScienceTransfer
 from possum2caom2 import fits2caom2_augmentation, preview_augmentation, storage_name
 from possum2caom2.possum_execute import RCloneClients, RCloneEntryBuilder, RCloneTransfer, remote_execution
 from vos import Client
@@ -91,6 +93,13 @@ from vos import Client
 
 META_VISITORS = [fits2caom2_augmentation]
 DATA_VISITORS = [preview_augmentation]
+
+
+class NoopScienceTransfer(ScienceTransfer):
+    """NoFheadStoreVisit work-around with a renamed file - move the renamed file to the correct working directory."""
+
+    def get(self, source, dest_fqn):
+        move(source, dest_fqn)
 
 
 def _run():
@@ -186,8 +195,8 @@ def _run_remote_todo():
     config.get_executors()
     clients = RCloneClients(config)
     local_metadata_reader = FileMetadataReader()
-    source_transfer = RCloneTransfer(config)
-    name_builder = RCloneEntryBuilder(storage_name.PossumName, config, local_metadata_reader, source_transfer)
+    source_transfer = NoopScienceTransfer()
+    name_builder = RCloneEntryBuilder(storage_name.PossumName, config, local_metadata_reader)
     data_sources = []
     for data_source in config.data_sources:
         data_source = TodoFileDataSource(config)

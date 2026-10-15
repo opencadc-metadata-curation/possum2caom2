@@ -329,11 +329,11 @@ class RCloneEntryBuilder(EntryBuilder, PawseyRename):
     """StorageName instance construction that includes renaming the files according to rules captured in PawseyRename
     class."""
 
-    def __init__(self, storage_name_ctor, config, metadata_reader, source_transfer):
+    def __init__(self, storage_name_ctor, config, metadata_reader):
         super().__init__(storage_name_ctor)
         self._config = config
         self._local_metadata_reader = metadata_reader
-        self._source_transfer = source_transfer
+        self._source_transfer = RCloneTransfer(config)
         # the link between the original and the rename
         # keys are pawsey names, values are POSSUM names
         self._pawsey_names = {}
@@ -394,9 +394,10 @@ class RCloneTransfer(ScienceTransfer):
             self._remote_key = config.data_sources[0].replace('/', ':', 1)
         else:
             self._remote_key = config.data_sources[0]
+        self._rclone_config_fqn = config.lookup.get('rclone_config_fqn')
 
     def get(self, source, dest_fqn):
-        exec_cmd(f'rclone copy {self._remote_key}/{source} {os.path.dirname(dest_fqn)}')
+        exec_cmd(f'rclone copy --config {self._rclone_config_fqn} {self._remote_key}/{source} {os.path.dirname(dest_fqn)}')
 
     def failure_action(self, original_fqn, destination_fqn, msg):
         self._logger.error(

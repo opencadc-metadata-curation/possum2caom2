@@ -89,6 +89,7 @@ meta_read_groups:
   - ivo://cadc.nrc.ca/gms?POSSUM-RW
   - ivo://cadc.nrc.ca/gms?POSSUM_Members
 lookup:
+  rclone_config_fqn: /usr/src/app/.rclone/rclone.conf
   rename_version: v1
   rename_prefix: PSM
   rclone_include_pattern: "*[iqu].fits"

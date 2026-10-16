@@ -767,3 +767,14 @@ def test_rename_bad_metadata(run_mock, test_config, test_data_dir):
     assert test_metadata_reader.set_headers.called, 'set_headers called'
     assert test_metadata_reader.set_headers.call_count == 1, 'no PSM'
 
+
+@patch('possum2caom2.possum_execute.exec_cmd')
+def test_rclone_transfer(exec_cmd_mock, test_config):
+    test_config.data_sources = ['pawsey_test/acacia/possum1234']
+    test_subject = possum_execute.RCloneTransfer(test_config)
+    test_source = 'component/tile/test_source.fits'
+    test_destination = '/tmp/test_source.fits'
+    test_subject.get(test_source, test_destination)
+    exec_cmd_mock.assert_called_with(
+        'rclone copy --config None pawsey_test:acacia/possum1234/component/tile/test_source.fits /tmp'
+    ), 'wrong exec_cmd'
